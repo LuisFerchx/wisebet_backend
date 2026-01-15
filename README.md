@@ -155,12 +155,13 @@ curl -X POST http://localhost:8000/api/auth/token/refresh/ \
 
 ```
 backend_wisebet/
-├── authentication/          # App de autenticación
-│   ├── models.py           # Modelo de Usuario personalizado
-│   ├── serializers.py      # Serializadores
-│   ├── views.py            # Vistas de API
-│   ├── urls.py             # URLs de autenticación
-│   └── admin.py            # Configuración del admin
+├── apps/                   # Carpeta de aplicaciones
+│   └── authentication/     # App de autenticación
+│       ├── models.py       # Modelo de Usuario personalizado
+│       ├── serializers.py  # Serializadores
+│       ├── views.py        # Vistas de API
+│       ├── urls.py         # URLs de autenticación
+│       └── admin.py        # Configuración del admin
 ├── config/                 # Configuración del proyecto
 │   ├── settings.py         # Configuración principal
 │   ├── urls.py             # URLs principales

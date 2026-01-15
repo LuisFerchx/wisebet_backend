@@ -47,20 +47,22 @@
 
 ```
 backend_wisebet/
-├── authentication/                      # App de autenticación
-│   ├── management/
-│   │   └── commands/
-│   │       └── create_test_user.py     # Comando personalizado
-│   ├── migrations/
-│   │   └── 0001_initial.py             # Migración del modelo User
+├── apps/                               # Carpeta de aplicaciones
 │   ├── __init__.py
-│   ├── admin.py                        # Configuración del admin
-│   ├── apps.py
-│   ├── models.py                       # Modelo User personalizado
-│   ├── serializers.py                  # Serializadores (User, Register, Login, etc.)
-│   ├── tests.py
-│   ├── urls.py                         # URLs de autenticación
-│   └── views.py                        # Vistas de API (Register, Login, etc.)
+│   └── authentication/                 # App de autenticación
+│       ├── management/
+│       │   └── commands/
+│       │       └── create_test_user.py # Comando personalizado
+│       ├── migrations/
+│       │   └── 0001_initial.py         # Migración del modelo User
+│       ├── __init__.py
+│       ├── admin.py                    # Configuración del admin
+│       ├── apps.py
+│       ├── models.py                   # Modelo User personalizado
+│       ├── serializers.py              # Serializadores
+│       ├── tests.py
+│       ├── urls.py                     # URLs de autenticación
+│       └── views.py                    # Vistas de API
 │
 ├── config/                             # Configuración del proyecto
 │   ├── __init__.py

@@ -154,11 +154,12 @@ pip install -r requirements.txt --force-reinstall
 
 ```
 backend_wisebet/
-├── authentication/              # App de autenticación
-│   ├── models.py               # Modelo de Usuario
-│   ├── serializers.py          # Serializadores
-│   ├── views.py                # Vistas de API
-│   └── urls.py                 # URLs
+├── apps/                       # Carpeta de aplicaciones
+│   └── authentication/         # App de autenticación
+│       ├── models.py           # Modelo de Usuario
+│       ├── serializers.py      # Serializadores
+│       ├── views.py                # Vistas de API
+│       └── urls.py                 # URLs
 ├── config/                     # Configuración
 │   ├── settings.py             # Configuración principal
 │   └── urls.py                 # URLs principales
