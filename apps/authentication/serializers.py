@@ -57,3 +57,15 @@ class ChangePasswordSerializer(serializers.Serializer):
         if attrs['new_password'] != attrs['new_password2']:
             raise serializers.ValidationError({"new_password": "Password fields didn't match."})
         return attrs
+
+class LogoutSerializer(serializers.Serializer):
+    """
+    Serializer for logout endpoint
+    """
+    refresh = serializers.CharField(required=True)
+
+class LoginResponseSerializer(serializers.Serializer):
+    user = UserSerializer()
+    refresh = serializers.CharField()
+    access = serializers.CharField()
+    message = serializers.CharField()

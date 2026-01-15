@@ -8,8 +8,11 @@ from .serializers import (
     UserSerializer, 
     RegisterSerializer, 
     LoginSerializer,
-    ChangePasswordSerializer
+    ChangePasswordSerializer,
+    LogoutSerializer,
+    LoginResponseSerializer
 )
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 User = get_user_model()
 
@@ -45,6 +48,9 @@ class LoginView(APIView):
     permission_classes = (AllowAny,)
     serializer_class = LoginSerializer
     
+    @extend_schema(
+        responses={200: LoginResponseSerializer}
+    )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -73,6 +79,7 @@ class LogoutView(APIView):
     API endpoint for user logout
     """
     permission_classes = (IsAuthenticated,)
+    serializer_class = LogoutSerializer
     
     def post(self, request):
         try:
@@ -104,6 +111,7 @@ class ChangePasswordView(APIView):
     API endpoint for changing user password
     """
     permission_classes = (IsAuthenticated,)
+    serializer_class = ChangePasswordSerializer
     
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
