@@ -10,17 +10,17 @@ class UserAdmin(BaseUserAdmin):
     """
     Custom User Admin
     """
-    list_display = ('username', 'email', 'first_name', 'last_name', 'phone', 'is_staff', 'created_at')
-    list_filter = ('is_staff', 'is_superuser', 'is_active', 'created_at')
-    search_fields = ('username', 'email', 'first_name', 'last_name', 'phone')
+    list_display = ('username', 'email', 'first_name', 'last_name', 'numero_contacto', 'rol', 'is_staff', 'created_at')
+    list_filter = ('rol', 'is_staff', 'is_superuser', 'is_active', 'created_at')
+    search_fields = ('username', 'email', 'first_name', 'last_name', 'numero_contacto', 'nombre_completo')
     ordering = ('-created_at',)
     
     fieldsets = BaseUserAdmin.fieldsets + (
-        ('Additional Info', {'fields': ('phone', 'created_at', 'updated_at')}),
+        ('Additional Info', {'fields': ('numero_contacto', 'rol', 'nombre_completo', 'created_at', 'updated_at')}),
     )
     
     readonly_fields = ('created_at', 'updated_at')
     
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        ('Additional Info', {'fields': ('email', 'phone')}),
+        ('Additional Info', {'fields': ('email', 'numero_contacto', 'rol', 'nombre_completo')}),
     )

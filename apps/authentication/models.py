@@ -6,8 +6,18 @@ class User(AbstractUser):
     """
     Custom User model extending Django's AbstractUser
     """
+    # Roles choices
+    ADMIN = 'ADMIN'
+    OPERADOR = 'OPERADOR'
+    ROLE_CHOICES = [
+        (ADMIN, 'Administrador'),
+        (OPERADOR, 'Operador'),
+    ]
+
     email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=20, blank=True, null=True)
+    numero_contacto = models.CharField(max_length=20, blank=True, null=True)
+    rol = models.CharField(max_length=20, choices=ROLE_CHOICES, default=OPERADOR)
+    nombre_completo = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

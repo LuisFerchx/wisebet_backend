@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     
     # Local apps
     'apps.authentication',
+    'apps.gestion_operativa',
 ]
 
 MIDDLEWARE = [

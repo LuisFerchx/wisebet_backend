@@ -20,12 +20,19 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"password\": \"SecurePass123!\",\n    \"password2\": \"SecurePass123!\",\n    \"first_name\": \"Test\",\n    \"last_name\": \"User\",\n    \"phone\": \"+1234567890\"\n}"
+              "raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"password\": \"SecurePass123!\",\n    \"password2\": \"SecurePass123!\",\n    \"first_name\": \"Test\",\n    \"last_name\": \"User\",\n    \"numero_contacto\": \"+1234567890\",\n    \"rol\": \"OPERADOR\",\n    \"nombre_completo\": \"Test User\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/auth/register/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "register", ""]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register",
+                ""
+              ]
             }
           }
         },
@@ -45,8 +52,15 @@
             },
             "url": {
               "raw": "{{base_url}}/api/auth/login/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "login", ""]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                ""
+              ]
             }
           }
         },
@@ -62,8 +76,15 @@
             ],
             "url": {
               "raw": "{{base_url}}/api/auth/profile/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "profile", ""]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "profile",
+                ""
+              ]
             }
           }
         },
@@ -83,12 +104,19 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"first_name\": \"Updated\",\n    \"last_name\": \"Name\",\n    \"phone\": \"+9876543210\"\n}"
+              "raw": "{\n    \"first_name\": \"Updated\",\n    \"last_name\": \"Name\",\n    \"numero_contacto\": \"+9876543210\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/auth/profile/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "profile", ""]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "profile",
+                ""
+              ]
             }
           }
         },
@@ -112,8 +140,15 @@
             },
             "url": {
               "raw": "{{base_url}}/api/auth/change-password/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "change-password", ""]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "change-password",
+                ""
+              ]
             }
           }
         },
@@ -133,8 +168,16 @@
             },
             "url": {
               "raw": "{{base_url}}/api/auth/token/refresh/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "token", "refresh", ""]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "token",
+                "refresh",
+                ""
+              ]
             }
           }
         },
@@ -158,10 +201,654 @@
             },
             "url": {
               "raw": "{{base_url}}/api/auth/logout/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "logout", ""]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout",
+                ""
+              ]
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "Gestión Operativa",
+      "item": [
+        {
+          "name": "Distribuidoras",
+          "item": [
+            {
+              "name": "Listar Distribuidoras",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/distribuidoras/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "distribuidoras",
+                    ""
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Crear Distribuidora",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"nombre\": \"Distribuidora Ejemplo\",\n    \"deportes\": [\"FUTBOL\", \"BASKETBALL\"],\n    \"descripcion\": \"Descripción de la distribuidora\",\n    \"activo\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/distribuidoras/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "distribuidoras",
+                    ""
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Obtener Distribuidora",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/distribuidoras/1/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "distribuidoras",
+                    "1",
+                    ""
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Actualizar Distribuidora",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"nombre\": \"Distribuidora Actualizada\",\n    \"deportes\": [\"FUTBOL\", \"TENNIS\"],\n    \"descripcion\": \"Nueva descripción\",\n    \"activo\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/distribuidoras/1/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "distribuidoras",
+                    "1",
+                    ""
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Eliminar Distribuidora",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/distribuidoras/1/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "distribuidoras",
+                    "1",
+                    ""
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Casas de Apuestas",
+          "item": [
+            {
+              "name": "Listar Casas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/casas-apuestas/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "casas-apuestas",
+                    ""
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Crear Casa",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"distribuidora\": 1,\n    \"nombre\": \"Casa Ejemplo\",\n    \"nro_perfiles\": 10,\n    \"url_backoffice\": \"https://backoffice.ejemplo.com\",\n    \"capital_activo_hoy\": 50000.00,\n    \"capital_total\": 100000.00,\n    \"perfiles_minimos_req\": 5,\n    \"activo\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/casas-apuestas/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "casas-apuestas",
+                    ""
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agencias",
+          "item": [
+            {
+              "name": "Listar Agencias",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/agencias/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "agencias",
+                    ""
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Crear Agencia",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"nombre\": \"Agencia Central\",\n    \"ubicacion\": \"Ciudad Principal\",\n    \"responsable\": \"Juan Pérez\",\n    \"activo\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/agencias/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "agencias",
+                    ""
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Perfiles Operativos",
+          "item": [
+            {
+              "name": "Listar Perfiles",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/perfiles-operativos/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "perfiles-operativos",
+                    ""
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Crear Perfil",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"usuario\": 1,\n    \"casa\": 1,\n    \"agencia\": 1,\n    \"nombre_usuario\": \"player123\",\n    \"tipo_jugador\": \"PROFESIONAL\",\n    \"deporte_dna\": \"FUTBOL\",\n    \"ip_operativa\": \"192.168.1.100\",\n    \"ciudad_sede\": \"Madrid\",\n    \"preferencias\": \"Preferencias del jugador\",\n    \"nivel_cuenta\": \"ORO\",\n    \"saldo_real\": 5000.00,\n    \"stake_promedio\": 100.00,\n    \"ops_semanales_actuales\": 20,\n    \"meta_ops_semanales\": 50,\n    \"activo\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/perfiles-operativos/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "perfiles-operativos",
+                    ""
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Configuración Operativa",
+          "item": [
+            {
+              "name": "Obtener Configuración",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/configuracion-operativa/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "configuracion-operativa",
+                    ""
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Crear/Actualizar Configuración",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"capital_total_activos\": 1000000.00,\n    \"meta_volumen_diario\": 50000.00,\n    \"perfiles_listos_operar\": 25,\n    \"perfiles_en_descanso\": 5,\n    \"umbral_saldo_critico\": 1000.00,\n    \"actualizar_meta_diariamente\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/configuracion-operativa/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "configuracion-operativa",
+                    ""
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transacciones",
+          "item": [
+            {
+              "name": "Listar Transacciones",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/transacciones/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "transacciones",
+                    ""
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Crear Transacción",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"perfil\": 1,\n    \"tipo_transaccion\": \"DEPOSITO\",\n    \"monto\": 1000.00,\n    \"fecha_transaccion\": \"2026-01-16T10:00:00Z\",\n    \"metodo_pago\": \"Transferencia Bancaria\",\n    \"estado\": \"COMPLETADO\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/transacciones/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "transacciones",
+                    ""
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Planificación Rotación",
+          "item": [
+            {
+              "name": "Listar Planificaciones",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/planificacion-rotacion/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "planificacion-rotacion",
+                    ""
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Crear Planificación",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"perfil\": 1,\n    \"fecha\": \"2026-01-16\",\n    \"estado_dia\": \"A\",\n    \"mes\": 1,\n    \"anio\": 2026\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/planificacion-rotacion/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "planificacion-rotacion",
+                    ""
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alertas Operativas",
+          "item": [
+            {
+              "name": "Listar Alertas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/alertas-operativas/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "alertas-operativas",
+                    ""
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Crear Alerta",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"tipo_alerta\": \"SALDO_BAJO\",\n    \"descripcion\": \"El saldo del perfil está por debajo del umbral crítico\",\n    \"severidad\": \"ALTA\",\n    \"perfil_afectado\": 1,\n    \"casa_afectada\": 1,\n    \"estado\": \"NUEVA\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/alertas-operativas/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "alertas-operativas",
+                    ""
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bitácoras de Mando",
+          "item": [
+            {
+              "name": "Listar Bitácoras",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/bitacoras-mando/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "bitacoras-mando",
+                    ""
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Crear Entrada Bitácora",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"perfil\": 1,\n    \"observacion\": \"El perfil tuvo un rendimiento excelente hoy\",\n    \"usuario_registro\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/gestion-operativa/bitacoras-mando/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "gestion-operativa",
+                    "bitacoras-mando",
+                    ""
+                  ]
+                }
+              }
+            }
+          ]
         }
       ]
     }
