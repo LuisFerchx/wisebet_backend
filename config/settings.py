@@ -193,11 +193,6 @@ SPECTACULAR_SETTINGS = {
 }
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:4200",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:4200",
-]
+CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3001,http://localhost:4201,http://127.0.0.1:3001,http://127.0.0.1:4201').split(',')
 
 CORS_ALLOW_CREDENTIALS = True
