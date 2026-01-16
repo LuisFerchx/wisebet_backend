@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     
     # Local apps
     'apps.authentication',
+    'apps.administration',
     'drf_spectacular',
 ]
 
