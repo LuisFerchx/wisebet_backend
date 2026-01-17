@@ -49,10 +49,22 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        username = serializer.validated_data['username']
+        identifier = serializer.validated_data['identifier']
         password = serializer.validated_data['password']
         
-        user = authenticate(username=username, password=password)
+        # Try to determine if identifier is email or username
+        user = None
+        
+        # Check if it's an email format
+        if '@' in identifier:
+            try:
+                user_obj = User.objects.get(email=identifier)
+                user = authenticate(username=user_obj.username, password=password)
+            except User.DoesNotExist:
+                user = None
+        else:
+            # Try as username
+            user = authenticate(username=identifier, password=password)
         
         if user is not None:
             refresh = RefreshToken.for_user(user)

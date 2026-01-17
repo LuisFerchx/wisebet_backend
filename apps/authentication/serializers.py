@@ -40,8 +40,9 @@ class RegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     """
     Serializer for user login
+    Accepts both email and username via 'identifier' field
     """
-    username = serializers.CharField(required=True)
+    identifier = serializers.CharField(required=True, help_text="Email or username")
     password = serializers.CharField(required=True, write_only=True)
 
 

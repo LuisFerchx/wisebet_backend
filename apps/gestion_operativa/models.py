@@ -24,7 +24,7 @@ class CasaApuestas(models.Model):
     distribuidora = models.ForeignKey(Distribuidora, on_delete=models.CASCADE, related_name='casas')
     nombre = models.CharField(max_length=100)
     nro_perfiles = models.IntegerField(default=0)
-    url_backoffice = models.URLField()
+    url_backoffice = models.URLField(blank=True, null=True)
     capital_activo_hoy = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     capital_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     fecha_actualizacion_capital = models.DateTimeField(auto_now=True)
@@ -69,6 +69,8 @@ class PerfilOperativo(models.Model):
     saldo_real = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     stake_promedio = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     ops_semanales_actuales = models.IntegerField(default=0)
+    ops_mensuales = models.IntegerField(default=0)
+    ops_historicas = models.IntegerField(default=0)
     meta_ops_semanales = models.IntegerField(default=0)
     activo = models.BooleanField(default=True)
 
@@ -155,3 +157,36 @@ class BitacoraMando(models.Model):
         db_table = 'bitacora_mando'
         verbose_name = 'Bitácora de Mando'
         verbose_name_plural = 'Bitácoras de Mando'
+
+class Operacion(models.Model):
+    id_operacion = models.AutoField(primary_key=True)
+    perfil = models.ForeignKey(PerfilOperativo, on_delete=models.CASCADE, related_name='operaciones_reales')
+    fecha_registro = models.DateTimeField(null=True, blank=True, help_text="Fecha y hora exacta de la operación")
+    importe = models.DecimalField(max_digits=12, decimal_places=2, help_text="Stake o monto apostado")
+    cuota = models.DecimalField(max_digits=6, decimal_places=2, help_text="Odds de la apuesta")
+    estado = models.CharField(max_length=20, choices=[
+        ('PENDIENTE', 'Pendiente'),
+        ('GANADA', 'Ganada'),
+        ('PERDIDA', 'Perdida'),
+        ('ANULADA', 'Anulada')
+    ], default='PENDIENTE')
+    payout = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Retorno total (Stake + Profit)")
+    profit_loss = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Resultado neto (P&L)")
+    
+    deporte = models.CharField(max_length=50, blank=True, null=True)
+    mercado = models.CharField(max_length=100, blank=True, null=True, help_text="Ej: Ganador del partido, Over 2.5")
+
+    class Meta:
+        db_table = 'operaciones'
+        verbose_name = 'Operación'
+        verbose_name_plural = 'Operaciones'
+        ordering = ['-fecha_registro']
+
+    def __str__(self):
+        return f"Op {self.id_operacion} - {self.perfil} - ${self.importe}"
+
+    def save(self, *args, **kwargs):
+        # Auto-calc P&L if payout is set
+        if self.payout is not None and self.importe:
+            self.profit_loss = self.payout - self.importe
+        super(Operacion, self).save(*args, **kwargs)
