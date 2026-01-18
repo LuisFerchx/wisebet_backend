@@ -46,6 +46,16 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(required=True, write_only=True)
 
 
+class LoginResponseSerializer(serializers.Serializer):
+    """
+    Serializer for login response
+    """
+    user = UserSerializer()
+    refresh = serializers.CharField()
+    access = serializers.CharField()
+    message = serializers.CharField()
+
+
 class ChangePasswordSerializer(serializers.Serializer):
     """
     Serializer for password change endpoint

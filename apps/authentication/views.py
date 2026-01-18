@@ -8,8 +8,10 @@ from .serializers import (
     UserSerializer, 
     RegisterSerializer, 
     LoginSerializer,
-    ChangePasswordSerializer
+    ChangePasswordSerializer,
+    LoginResponseSerializer
 )
+from drf_spectacular.utils import extend_schema
 
 User = get_user_model()
 
@@ -22,6 +24,10 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
     
+    @extend_schema(
+        responses={201: LoginResponseSerializer},
+        description="Register a new user and return tokens"
+    )
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -45,6 +51,10 @@ class LoginView(APIView):
     permission_classes = (AllowAny,)
     serializer_class = LoginSerializer
     
+    @extend_schema(
+        responses={200: LoginResponseSerializer},
+        description="Login with username/email and password"
+    )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

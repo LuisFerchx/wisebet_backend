@@ -62,3 +62,7 @@ coverage.xml
 
 # Pytest
 .pytest_cache/
+
+# Migrations
+**/migrations/*
+!**/migrations/__init__.py
