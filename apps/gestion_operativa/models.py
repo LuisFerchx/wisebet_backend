@@ -39,12 +39,44 @@ class CasaApuestas(models.Model):
     def __str__(self):
         return self.nombre
 
+class Ubicacion(models.Model):
+    id_ubicacion = models.AutoField(primary_key=True)
+    pais = models.CharField(max_length=100, default='Perú')
+    provincia_estado = models.CharField(max_length=100, verbose_name="Provincia / Estado")
+    ciudad = models.CharField(max_length=100)
+    direccion = models.CharField(max_length=255, verbose_name="Dirección exacta (Calles)")
+    referencia = models.CharField(max_length=255, blank=True, null=True, help_text="Ej: Frente al parque...")
+    link_google_maps = models.URLField(blank=True, null=True, help_text="Enlace exacto a Google Maps")
+    
+    # Campo activo eliminado pues "una ubicación siempre existe"
+
+    class Meta:
+        db_table = 'ubicaciones'
+        verbose_name = 'Ubicación'
+        verbose_name_plural = 'Ubicaciones'
+
+    def __str__(self):
+        return f"{self.ciudad} - {self.direccion}"
+
 class Agencia(models.Model):
     id_agencia = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
-    ubicacion = models.CharField(max_length=200)
+    
+    # Ubicación Normalizada
+    ubicacion = models.ForeignKey(Ubicacion, on_delete=models.SET_NULL, null=True, related_name='agencias')
+    
+    # Gestión
     responsable = models.CharField(max_length=100)
+    contacto = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Operatividad
+    casa_madre = models.ForeignKey(CasaApuestas, on_delete=models.SET_NULL, null=True, related_name='agencias')
+    rake_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="% Rake")
+    perfiles_minimos = models.IntegerField(default=5)
+    url_backoffice = models.URLField(blank=True, null=True)
+    
     activo = models.BooleanField(default=True)
+    fecha_registro = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     class Meta:
         db_table = 'agencias'
@@ -57,20 +89,25 @@ class Agencia(models.Model):
 class PerfilOperativo(models.Model):
     id_perfil = models.AutoField(primary_key=True)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='perfiles_operativos')
-    casa = models.ForeignKey(CasaApuestas, on_delete=models.CASCADE, related_name='perfiles')
+    
+    # Casa opcional (perfiles sueltos no tienen casa, se selecciona de las disponibles)
+    casa = models.ForeignKey(CasaApuestas, on_delete=models.SET_NULL, null=True, blank=True, related_name='perfiles')
+    
+    # Agencia obligatoria (se selecciona de las disponibles)
     agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='perfiles')
+    
+    # Acceso directo al backoffice de la cuenta
+    url_acceso_backoffice = models.URLField(blank=True, null=True, help_text="Link al backoffice de la cuenta")
+    
     nombre_usuario = models.CharField(max_length=100)
     tipo_jugador = models.CharField(max_length=50, choices=TipoJugadorChoices.choices)
     deporte_dna = models.CharField(max_length=50, choices=DeportesChoices.choices)
     ip_operativa = models.GenericIPAddressField(protocol='both', unpack_ipv4=True)
-    ciudad_sede = models.CharField(max_length=100)
+    # ciudad_sede ELIMINADO - Se obtiene de agencia.ubicacion
     preferencias = models.TextField(blank=True, null=True)
     nivel_cuenta = models.CharField(max_length=50, choices=NivelCuentaChoices.choices)
-    saldo_real = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    stake_promedio = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    ops_semanales_actuales = models.IntegerField(default=0)
-    ops_mensuales = models.IntegerField(default=0)
-    ops_historicas = models.IntegerField(default=0)
+    # Campos eliminados: saldo_real, stake_promedio, ops_semanales_actuales, ops_mensuales, ops_historicas
+    # Ahora se calculan dinámicamente desde la tabla Operacion
     meta_ops_semanales = models.IntegerField(default=0)
     activo = models.BooleanField(default=True)
 

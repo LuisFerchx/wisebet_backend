@@ -1,8 +1,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    DistribuidoraViewSet, CasaApuestasViewSet, AgenciaViewSet,
-    PerfilOperativoViewSet, ConfiguracionOperativaViewSet,
+    DistribuidoraViewSet, CasaApuestasViewSet, UbicacionViewSet, AgenciaViewSet,
+    PerfilOperativoViewSet, ConfiguracionOperativaViewSet, OperacionViewSet,
     TransaccionFinancieraViewSet, PlanificacionRotacionViewSet,
     AlertaOperativaViewSet, BitacoraMandoViewSet
 )
@@ -10,8 +10,10 @@ from .views import (
 router = DefaultRouter()
 router.register(r'distribuidoras', DistribuidoraViewSet)
 router.register(r'casas-apuestas', CasaApuestasViewSet)
+router.register(r'ubicaciones', UbicacionViewSet)
 router.register(r'agencias', AgenciaViewSet)
 router.register(r'perfiles-operativos', PerfilOperativoViewSet)
+router.register(r'operaciones', OperacionViewSet)
 router.register(r'configuracion-operativa', ConfiguracionOperativaViewSet)
 router.register(r'transacciones', TransaccionFinancieraViewSet)
 router.register(r'planificacion-rotacion', PlanificacionRotacionViewSet)

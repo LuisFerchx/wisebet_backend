@@ -3,16 +3,16 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from rest_framework.pagination import PageNumberPagination
 
 from .models import (
-    Distribuidora, CasaApuestas, Agencia, PerfilOperativo,
+    Distribuidora, CasaApuestas, Ubicacion, Agencia, PerfilOperativo,
     ConfiguracionOperativa, TransaccionFinanciera, PlanificacionRotacion,
-    AlertaOperativa, BitacoraMando
+    AlertaOperativa, BitacoraMando, Operacion
 )
 from .serializers import (
     DistribuidoraSerializer, DistribuidoraExpandedSerializer,
-    CasaApuestasSerializer, AgenciaSerializer,
+    CasaApuestasSerializer, UbicacionSerializer, AgenciaSerializer,
     PerfilOperativoSerializer, ConfiguracionOperativaSerializer,
     TransaccionFinancieraSerializer, PlanificacionRotacionSerializer,
-    AlertaOperativaSerializer, BitacoraMandoSerializer
+    AlertaOperativaSerializer, BitacoraMandoSerializer, OperacionSerializer
 )
 
 
@@ -92,14 +92,54 @@ class CasaApuestasViewSet(viewsets.ModelViewSet):
 
 
 # ============================================================================
+# UBICACIONES VIEWSET
+# ============================================================================
+
+class UbicacionViewSet(viewsets.ModelViewSet):
+    """ViewSet para Ubicaciones normalizadas."""
+    queryset = Ubicacion.objects.all()
+    serializer_class = UbicacionSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    pagination_class = StandardPagination
+
+
+# ============================================================================
 # AGENCIAS VIEWSET
 # ============================================================================
 
 class AgenciaViewSet(viewsets.ModelViewSet):
-    queryset = Agencia.objects.all()
+    """ViewSet para Agencias con ubicación y casa madre."""
+    queryset = Agencia.objects.select_related('ubicacion', 'casa_madre').all()
     serializer_class = AgenciaSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardPagination
+
+
+# ============================================================================
+# OPERACIONES VIEWSET
+# ============================================================================
+
+class OperacionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para Operaciones/Apuestas.
+    
+    Soporta:
+    - `?perfil=ID`: Filtra por perfil
+    """
+    queryset = Operacion.objects.select_related('perfil').all()
+    serializer_class = OperacionSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
+    
+    def get_queryset(self):
+        """Filtra por perfil si se especifica."""
+        queryset = super().get_queryset()
+        perfil_id = self.request.query_params.get('perfil')
+        
+        if perfil_id:
+            queryset = queryset.filter(perfil_id=perfil_id)
+        
+        return queryset
 
 
 # ============================================================================
