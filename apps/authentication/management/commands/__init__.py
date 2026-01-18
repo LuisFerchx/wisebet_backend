@@ -1,1 +1,1 @@
-# This file is required for Python to recognize this directory as a package
+# This file makes the directory a Python package
