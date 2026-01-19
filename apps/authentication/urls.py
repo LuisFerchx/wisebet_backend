@@ -5,14 +5,16 @@ from .views import (
     LoginView,
     LogoutView,
     UserProfileView,
-    ChangePasswordView
+    ChangePasswordView,
+    UserNavigationView,
 )
 
 urlpatterns = [
-    path('register/', RegisterView.as_view(), name='register'),
-    path('login/', LoginView.as_view(), name='login'),
-    path('logout/', LogoutView.as_view(), name='logout'),
-    path('profile/', UserProfileView.as_view(), name='profile'),
-    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path("register/", RegisterView.as_view(), name="register"),
+    path("login/", LoginView.as_view(), name="login"),
+    path("logout/", LogoutView.as_view(), name="logout"),
+    path("profile/", UserProfileView.as_view(), name="profile"),
+    path("change-password/", ChangePasswordView.as_view(), name="change-password"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("navigation/", UserNavigationView.as_view(), name="user-navigation"),
 ]

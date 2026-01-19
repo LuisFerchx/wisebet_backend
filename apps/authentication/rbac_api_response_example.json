@@ -1,0 +1,89 @@
+{
+    "user": {
+        "id": 1,
+        "username": "admin",
+        "email": "admin@wisebet.com",
+        "first_name": "Admin",
+        "last_name": "User",
+        "numero_contacto": "1234567890",
+        "rol": 1,
+        "nombre_completo": "Administrador Principal",
+        "created_at": "2026-01-18T20:00:00Z"
+    },
+    "navigation": [
+        {
+            "id": 1,
+            "name": "Dashboard",
+            "code": "dashboard",
+            "icon": "dashboard",
+            "route": "/dashboard",
+            "order": 1,
+            "children": []
+        },
+        {
+            "id": 2,
+            "name": "Administración",
+            "code": "administration",
+            "icon": "settings",
+            "route": null,
+            "order": 2,
+            "children": [
+                {
+                    "id": 4,
+                    "name": "Usuarios",
+                    "code": "users",
+                    "icon": "people",
+                    "route": "/admin/users",
+                    "order": 1,
+                    "children": []
+                },
+                {
+                    "id": 5,
+                    "name": "Roles",
+                    "code": "roles",
+                    "icon": "security",
+                    "route": "/admin/roles",
+                    "order": 2,
+                    "children": []
+                },
+                {
+                    "id": 6,
+                    "name": "Agencias",
+                    "code": "agencies",
+                    "icon": "business",
+                    "route": "/admin/agencies",
+                    "order": 3,
+                    "children": []
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "name": "Operaciones",
+            "code": "operations",
+            "icon": "work",
+            "route": null,
+            "order": 3,
+            "children": [
+                {
+                    "id": 7,
+                    "name": "Apuestas",
+                    "code": "bets",
+                    "icon": "casino",
+                    "route": "/operations/bets",
+                    "order": 1,
+                    "children": []
+                },
+                {
+                    "id": 8,
+                    "name": "Reportes",
+                    "code": "reports",
+                    "icon": "assessment",
+                    "route": "/operations/reports",
+                    "order": 2,
+                    "children": []
+                }
+            ]
+        }
+    ]
+}
