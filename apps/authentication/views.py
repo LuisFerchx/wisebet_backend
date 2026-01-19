@@ -188,7 +188,7 @@ class UserNavigationView(APIView):
             )
 
         # Import models here to avoid circular imports
-        from .models import Menu, RoleMenuAccess
+        from .models import Menu, RoleMenuAccess, Section
         from .serializers import UserSerializer, MenuSerializer
 
         # Get all menu accesses for this role
@@ -219,7 +219,22 @@ class UserNavigationView(APIView):
                 "route": menu.route,
                 "order": menu.order,
                 "children": [],
+                "sections": [],
             }
+
+            # Get sections for this menu
+            sections = menu.sections.filter(is_active=True).order_by("order", "name")
+            for section in sections:
+                menu_data["sections"].append(
+                    {
+                        "id": section.id,
+                        "name": section.name,
+                        "code": section.code,
+                        "icon": section.icon,
+                        "route": section.route,
+                        "order": section.order,
+                    }
+                )
 
             # Get children menus that user has access to
             children = menu.children.filter(
@@ -227,17 +242,34 @@ class UserNavigationView(APIView):
             ).order_by("order", "name")
 
             for child in children:
-                menu_data["children"].append(
-                    {
-                        "id": child.id,
-                        "name": child.name,
-                        "code": child.code,
-                        "icon": child.icon,
-                        "route": child.route,
-                        "order": child.order,
-                        "children": [],
-                    }
+                child_data = {
+                    "id": child.id,
+                    "name": child.name,
+                    "code": child.code,
+                    "icon": child.icon,
+                    "route": child.route,
+                    "order": child.order,
+                    "children": [],
+                    "sections": [],
+                }
+
+                # Get sections for this child menu
+                child_sections = child.sections.filter(is_active=True).order_by(
+                    "order", "name"
                 )
+                for section in child_sections:
+                    child_data["sections"].append(
+                        {
+                            "id": section.id,
+                            "name": section.name,
+                            "code": section.code,
+                            "icon": section.icon,
+                            "route": section.route,
+                            "order": section.order,
+                        }
+                    )
+
+                menu_data["children"].append(child_data)
 
             navigation_data.append(menu_data)
 
