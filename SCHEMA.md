@@ -17,9 +17,9 @@
                           └────────┬────────┘       │  Ubicacion  │
                                    │               └─────────────┘
                                    │
-                          ┌────────┴────────┐
-                          │ PerfilOperativo │
-                          └────────┬────────┘
+┌─────────────┐               ┌────────┴────────┐
+│   Persona   │──1:N───────────│ PerfilOperativo │
+└─────────────┘               └────────┬────────┘
                                    │
               ┌────────────────────┼────────────────────┐
               │                    │                    │
@@ -34,6 +34,7 @@
 ## Tablas Principales
 
 ### 1. Distribuidora (`distribuidoras_datos`)
+
 Entidad raíz que agrupa casas de apuestas.
 
 | Campo | Tipo | Descripción |
@@ -51,6 +52,7 @@ Entidad raíz que agrupa casas de apuestas.
 ---
 
 ### 2. CasaApuestas (`casas_apuestas`)
+
 Casas de apuestas pertenecientes a una distribuidora.
 
 | Campo | Tipo | Descripción |
@@ -70,6 +72,7 @@ Casas de apuestas pertenecientes a una distribuidora.
 ---
 
 ### 3. Ubicacion (`ubicaciones`)
+
 Catálogo normalizado de ubicaciones geográficas.
 
 | Campo | Tipo | Descripción |
@@ -86,7 +89,36 @@ Catálogo normalizado de ubicaciones geográficas.
 
 ---
 
-### 4. Agencia (`agencias`)
+### 4. Persona (`personas`)
+
+Datos de identidad de una persona real para crear cuentas.
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id_persona` | PK, AutoField | Identificador único |
+| `primer_nombre` | CharField(100) | Primer nombre |
+| `segundo_nombre` | CharField(100) | Segundo nombre (opcional) |
+| `primer_apellido` | CharField(100) | Primer apellido |
+| `segundo_apellido` | CharField(100) | Segundo apellido (opcional) |
+| `tipo_documento` | Enum | CEDULA, PASAPORTE, LICENCIA, DNI, OTRO |
+| `numero_documento` | CharField(50) | Número de identificación (**único**) |
+| `fecha_nacimiento` | DateField | Fecha de nacimiento |
+| `pais` | CharField(100) | País de residencia |
+| `telefono` | CharField(20) | Teléfono de contacto |
+| `correo_electronico` | EmailField | Email (**único**) |
+| `direccion` | CharField(255) | Dirección (opcional) |
+| `foto_rostro` | ImageField | Selfie para verificación KYC |
+| `documento_frente` | ImageField | Copia documento (frente) |
+| `documento_reverso` | ImageField | Copia documento (reverso) |
+| `fecha_registro` | DateTime | Auto timestamp |
+| `activo` | Boolean | Estado |
+
+**Relaciones:** 1:N con `PerfilOperativo`
+
+---
+
+### 5. Agencia (`agencias`)
+
 Agencias que gestionan perfiles operativos.
 
 | Campo | Tipo | Descripción |
@@ -108,14 +140,16 @@ Agencias que gestionan perfiles operativos.
 ---
 
 ### 5. PerfilOperativo (`perfiles_operativos`)
+
 Perfiles de operadores/apostadores.
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | `id_perfil` | PK, AutoField | Identificador único |
-| `usuario` | FK → User | Usuario del sistema |
-| `casa` | FK → CasaApuestas | Casa asignada (**opcional**, perfiles sueltos) |
-| `agencia` | FK → Agencia | Agencia a la que pertenece |
+| `usuario` | FK → User | Operador que gestiona el perfil |
+| `persona` | FK → Persona | Datos de identidad usados |
+| `casa` | FK → CasaApuestas | Casa de apuestas (**opcional**) |
+| `agencia` | FK → Agencia | Agencia donde se creó |
 | `url_acceso_backoffice` | URLField | Link al backoffice de la cuenta |
 | `nombre_usuario` | CharField(100) | Username en la casa |
 | `tipo_jugador` | Enum | PROFESIONAL, RECREATIVO, CASUAL, HIGH_ROLLER |
@@ -126,18 +160,22 @@ Perfiles de operadores/apostadores.
 | `meta_ops_semanales` | Integer | Meta configurable |
 | `activo` | Boolean | Estado |
 
+**Restricción:** `unique_together = ['persona', 'casa']` (Una persona solo puede tener UNA cuenta por casa)
+
 **Campos Calculados (No almacenados, se obtienen al vuelo):**
+
 - `saldo_real`: Suma de depósitos - retiros desde `TransaccionFinanciera`
 - `stake_promedio`: Promedio de `importe` desde `Operacion`
 - `ops_semanales`: Count de operaciones de la semana
 - `ops_mensuales`: Count de operaciones del mes
 - `ops_historicas`: Count total de operaciones
 
-**Relaciones:** N:1 con `User`, N:1 con `CasaApuestas`, N:1 con `Agencia`, 1:N con `Operacion`, 1:N con `TransaccionFinanciera`
+**Relaciones:** N:1 con `User`, N:1 con `Persona`, N:1 con `CasaApuestas`, N:1 con `Agencia`, 1:N con `Operacion`, 1:N con `TransaccionFinanciera`
 
 ---
 
 ### 6. Operacion (`operaciones`)
+
 Registro detallado de cada apuesta realizada.
 
 | Campo | Tipo | Descripción |
@@ -158,6 +196,7 @@ Registro detallado de cada apuesta realizada.
 ---
 
 ### 7. TransaccionFinanciera (`transacciones_financieras`)
+
 Movimientos de dinero (depósitos/retiros).
 
 | Campo | Tipo | Descripción |
@@ -177,15 +216,19 @@ Movimientos de dinero (depósitos/retiros).
 ## Tablas Auxiliares
 
 ### PlanificacionRotacion (`planificacion_rotacion`)
+
 Calendario de días activos/descanso por perfil.
 
 ### AlertaOperativa (`alertas_operativas`)
+
 Sistema de alertas y notificaciones.
 
 ### BitacoraMando (`bitacora_mando`)
+
 Log de observaciones por perfil.
 
 ### ConfiguracionOperativa (`configuracion_operativa`)
+
 Configuración global del sistema (Singleton).
 
 ---
@@ -206,13 +249,15 @@ Configuración global del sistema (Singleton).
 
 | Recurso | Endpoint | Descripción |
 |---------|----------|-------------|
-| Distribuidoras | `/api/gestion/distribuidoras/` | CRUD + `?expand=casas` |
-| Casas | `/api/gestion/casas-apuestas/` | CRUD + `?distribuidora=ID` |
-| Ubicaciones | `/api/gestion/ubicaciones/` | CRUD catálogo |
-| Agencias | `/api/gestion/agencias/` | CRUD |
-| Perfiles | `/api/gestion/perfiles-operativos/` | CRUD con campos calculados |
-| Operaciones | `/api/gestion/operaciones/` | CRUD + `?perfil=ID` |
-| Transacciones | `/api/gestion/transacciones/` | CRUD |
-| Planificación | `/api/gestion/planificacion-rotacion/` | CRUD |
-| Alertas | `/api/gestion/alertas-operativas/` | CRUD |
-| Bitácora | `/api/gestion/bitacoras-mando/` | CRUD |
+| Distribuidoras | `/api/gestion-operativa/distribuidoras/` | CRUD + `?expand=casas` |
+| Casas | `/api/gestion-operativa/casas-apuestas/` | CRUD + `?distribuidora=ID` |
+| Ubicaciones | `/api/gestion-operativa/ubicaciones/` | CRUD catálogo |
+| Personas | `/api/gestion-operativa/personas/` | CRUD datos de identidad (Auth requerida) |
+| Agencias | `/api/gestion-operativa/agencias/` | CRUD |
+| Perfiles | `/api/gestion-operativa/perfiles-operativos/` | CRUD con campos calculados |
+| Operaciones | `/api/gestion-operativa/operaciones/` | CRUD + `?perfil=ID` |
+| Transacciones | `/api/gestion-operativa/transacciones/` | CRUD |
+| Planificación | `/api/gestion-operativa/planificacion-rotacion/` | CRUD |
+| Alertas | `/api/gestion-operativa/alertas-operativas/` | CRUD |
+| Bitácora | `/api/gestion-operativa/bitacoras-mando/` | CRUD |
+| Configuración | `/api/gestion-operativa/configuracion-operativa/` | CRUD Singleton |
