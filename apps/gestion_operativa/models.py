@@ -1,29 +1,123 @@
 from django.db import models
 from django.conf import settings
-from .choices import DeportesChoices, TipoJugadorChoices, NivelCuentaChoices
+from .choices import TipoJugadorChoices, NivelCuentaChoices, DeportesChoices
+
+
+# ============================================================================
+# MODELOS BASE - CATÁLOGOS
+# ============================================================================
+
+
+class Deporte(models.Model):
+    """Catálogo de deportes disponibles para apuestas."""
+
+    id_deporte = models.AutoField(primary_key=True)
+    codigo = models.CharField(
+        max_length=50,
+        unique=True,
+        choices=DeportesChoices.choices,
+    )
+    nombre = models.CharField(max_length=100)  # Ej: "Fútbol"
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "deportes"
+        verbose_name = "Deporte"
+        verbose_name_plural = "Deportes"
+
+    def __str__(self):
+        return self.nombre
+
+
+class Pais(models.Model):
+    """Catálogo de países."""
+
+    id_pais = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100, unique=True)
+    codigo_iso = models.CharField(
+        max_length=3, blank=True, null=True
+    )  # ISO 3166-1 alpha-3
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "paises"
+        verbose_name = "País"
+        verbose_name_plural = "Países"
+
+    def __str__(self):
+        return self.nombre
+
+
+class ProvinciaEstado(models.Model):
+    """Provincias o estados que pertenecen a un país."""
+
+    id_provincia = models.AutoField(primary_key=True)
+    pais = models.ForeignKey(Pais, on_delete=models.CASCADE, related_name="provincias")
+    nombre = models.CharField(max_length=100)
+
+    class Meta:
+        db_table = "provincias_estados"
+        verbose_name = "Provincia / Estado"
+        verbose_name_plural = "Provincias / Estados"
+        unique_together = ["pais", "nombre"]
+
+    def __str__(self):
+        return f"{self.nombre}, {self.pais.nombre}"
+
+
+class Ciudad(models.Model):
+    """Ciudades que pertenecen a una provincia o estado."""
+
+    id_ciudad = models.AutoField(primary_key=True)
+    provincia = models.ForeignKey(
+        ProvinciaEstado, on_delete=models.CASCADE, related_name="ciudades"
+    )
+    nombre = models.CharField(max_length=100)
+
+    class Meta:
+        db_table = "ciudades"
+        verbose_name = "Ciudad"
+        verbose_name_plural = "Ciudades"
+        unique_together = ["provincia", "nombre"]
+
+    def __str__(self):
+        return f"{self.nombre}, {self.provincia.nombre}"
+
+
+# ============================================================================
+# MODELOS DE NEGOCIO
+# ============================================================================
+
 
 class Distribuidora(models.Model):
     id_distribuidora = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
-    deportes = models.JSONField(default=list)  # Stores list of DeportesChoices values
+    deportes = models.ManyToManyField(
+        Deporte, related_name="distribuidoras", blank=True
+    )
     descripcion = models.TextField(blank=True, null=True)
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'distribuidoras_datos'
-        verbose_name = 'Distribuidora'
-        verbose_name_plural = 'Distribuidoras'
+        db_table = "distribuidoras_datos"
+        verbose_name = "Distribuidora"
+        verbose_name_plural = "Distribuidoras"
 
     def __str__(self):
         return self.nombre
 
+
 class CasaApuestas(models.Model):
     id_casa = models.AutoField(primary_key=True)
-    distribuidora = models.ForeignKey(Distribuidora, on_delete=models.CASCADE, related_name='casas')
+    distribuidora = models.ForeignKey(
+        Distribuidora, on_delete=models.CASCADE, related_name="casas"
+    )
     nombre = models.CharField(max_length=100)
-    nro_perfiles = models.IntegerField(default=0)
+    nro_agencias = models.IntegerField(
+        default=0, help_text="Número de agencias asociadas"
+    )
     url_backoffice = models.URLField(blank=True, null=True)
     capital_activo_hoy = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     capital_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -32,77 +126,112 @@ class CasaApuestas(models.Model):
     activo = models.BooleanField(default=True)
 
     class Meta:
-        db_table = 'casas_apuestas'
-        verbose_name = 'Casa de Apuestas'
-        verbose_name_plural = 'Casas de Apuestas'
+        db_table = "casas_apuestas"
+        verbose_name = "Casa de Apuestas"
+        verbose_name_plural = "Casas de Apuestas"
 
     def __str__(self):
         return self.nombre
 
+
 class Ubicacion(models.Model):
     id_ubicacion = models.AutoField(primary_key=True)
-    pais = models.CharField(max_length=100, default='Perú')
-    provincia_estado = models.CharField(max_length=100, verbose_name="Provincia / Estado")
-    ciudad = models.CharField(max_length=100)
-    direccion = models.CharField(max_length=255, verbose_name="Dirección exacta (Calles)")
-    referencia = models.CharField(max_length=255, blank=True, null=True, help_text="Ej: Frente al parque...")
-    link_google_maps = models.URLField(blank=True, null=True, help_text="Enlace exacto a Google Maps")
-    
+    pais = models.ForeignKey(
+        Pais, on_delete=models.SET_NULL, null=True, related_name="ubicaciones"
+    )
+    provincia_estado = models.ForeignKey(
+        ProvinciaEstado,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="ubicaciones",
+        verbose_name="Provincia / Estado",
+    )
+    ciudad = models.ForeignKey(
+        Ciudad, on_delete=models.SET_NULL, null=True, related_name="ubicaciones"
+    )
+    direccion = models.CharField(
+        max_length=255, verbose_name="Dirección exacta (Calles)"
+    )
+    referencia = models.CharField(
+        max_length=255, blank=True, null=True, help_text="Ej: Frente al parque..."
+    )
+    link_google_maps = models.URLField(
+        blank=True, null=True, help_text="Enlace exacto a Google Maps"
+    )
+
     # Campo activo eliminado pues "una ubicación siempre existe"
 
     class Meta:
-        db_table = 'ubicaciones'
-        verbose_name = 'Ubicación'
-        verbose_name_plural = 'Ubicaciones'
+        db_table = "ubicaciones"
+        verbose_name = "Ubicación"
+        verbose_name_plural = "Ubicaciones"
 
     def __str__(self):
         return f"{self.ciudad} - {self.direccion}"
 
+
 class Agencia(models.Model):
     id_agencia = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
-    
+
     # Ubicación Normalizada
-    ubicacion = models.ForeignKey(Ubicacion, on_delete=models.SET_NULL, null=True, related_name='agencias')
-    
+    ubicacion = models.ForeignKey(
+        Ubicacion, on_delete=models.SET_NULL, null=True, related_name="agencias"
+    )
+
     # Gestión
     responsable = models.CharField(max_length=100)
     contacto = models.CharField(max_length=100, blank=True, null=True)
-    
+    email = models.EmailField(max_length=255, blank=True, null=True)
+
     # Operatividad
-    casa_madre = models.ForeignKey(CasaApuestas, on_delete=models.SET_NULL, null=True, related_name='agencias')
-    rake_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="% Rake")
-    perfiles_minimos = models.IntegerField(default=5)
+    casa_madre = models.ForeignKey(
+        CasaApuestas, on_delete=models.SET_NULL, null=True, related_name="agencias"
+    )
+    rake_porcentaje = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0, help_text="% Rake"
+    )
+    perfiles_totales = models.IntegerField(
+        default=0, help_text="Total de perfiles en esta agencia"
+    )
     url_backoffice = models.URLField(blank=True, null=True)
-    
+
     activo = models.BooleanField(default=True)
     fecha_registro = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     class Meta:
-        db_table = 'agencias'
-        verbose_name = 'Agencia'
-        verbose_name_plural = 'Agencias'
+        db_table = "agencias"
+        verbose_name = "Agencia"
+        verbose_name_plural = "Agencias"
 
     def __str__(self):
         return self.nombre
 
+
 class PerfilOperativo(models.Model):
     id_perfil = models.AutoField(primary_key=True)
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='perfiles_operativos')
-    
-    # Casa opcional (perfiles sueltos no tienen casa, se selecciona de las disponibles)
-    casa = models.ForeignKey(CasaApuestas, on_delete=models.SET_NULL, null=True, blank=True, related_name='perfiles')
-    
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="perfiles_operativos",
+    )
+
     # Agencia obligatoria (se selecciona de las disponibles)
-    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='perfiles')
-    
+    agencia = models.ForeignKey(
+        Agencia, on_delete=models.CASCADE, related_name="perfiles"
+    )
+
     # Acceso directo al backoffice de la cuenta
-    url_acceso_backoffice = models.URLField(blank=True, null=True, help_text="Link al backoffice de la cuenta")
-    
+    url_acceso_backoffice = models.URLField(
+        blank=True, null=True, help_text="Link al backoffice de la cuenta"
+    )
+
     nombre_usuario = models.CharField(max_length=100)
     tipo_jugador = models.CharField(max_length=50, choices=TipoJugadorChoices.choices)
-    deporte_dna = models.CharField(max_length=50, choices=DeportesChoices.choices)
-    ip_operativa = models.GenericIPAddressField(protocol='both', unpack_ipv4=True)
+    deporte_dna = models.ForeignKey(
+        Deporte, on_delete=models.SET_NULL, null=True, related_name="perfiles_dna"
+    )
+    ip_operativa = models.GenericIPAddressField(protocol="both", unpack_ipv4=True)
     # ciudad_sede ELIMINADO - Se obtiene de agencia.ubicacion
     preferencias = models.TextField(blank=True, null=True)
     nivel_cuenta = models.CharField(max_length=50, choices=NivelCuentaChoices.choices)
@@ -112,112 +241,178 @@ class PerfilOperativo(models.Model):
     activo = models.BooleanField(default=True)
 
     class Meta:
-        db_table = 'perfiles_operativos'
-        verbose_name = 'Perfil Operativo'
-        verbose_name_plural = 'Perfiles Operativos'
+        db_table = "perfiles_operativos"
+        verbose_name = "Perfil Operativo"
+        verbose_name_plural = "Perfiles Operativos"
 
     def __str__(self):
-        return f"{self.nombre_usuario} - {self.casa.nombre}"
+        casa_nombre = (
+            self.agencia.casa_madre.nombre if self.agencia.casa_madre else "Sin Casa"
+        )
+        return f"{self.nombre_usuario} - {casa_nombre}"
+
 
 class ConfiguracionOperativa(models.Model):
     id_configuracion = models.AutoField(primary_key=True)
-    capital_total_activos = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    meta_volumen_diario = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    capital_total_activos = models.DecimalField(
+        max_digits=15, decimal_places=2, default=0
+    )
+    meta_volumen_diario = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0
+    )
     perfiles_listos_operar = models.IntegerField(default=0)
     perfiles_en_descanso = models.IntegerField(default=0)
-    umbral_saldo_critico = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    umbral_saldo_critico = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0
+    )
     actualizar_meta_diariamente = models.BooleanField(default=False)
 
     class Meta:
-        db_table = 'configuracion_operativa'
-        verbose_name = 'Configuración Operativa'
-        verbose_name_plural = 'Configuraciones Operativas'
+        db_table = "configuracion_operativa"
+        verbose_name = "Configuración Operativa"
+        verbose_name_plural = "Configuraciones Operativas"
 
     def save(self, *args, **kwargs):
         if not self.pk and ConfiguracionOperativa.objects.exists():
-             # Ensures only one instance exists
+            # Ensures only one instance exists
             return
         return super(ConfiguracionOperativa, self).save(*args, **kwargs)
 
     def __str__(self):
         return "Configuración Global"
 
+
 class TransaccionFinanciera(models.Model):
     id_transaccion = models.AutoField(primary_key=True)
-    perfil = models.ForeignKey(PerfilOperativo, on_delete=models.CASCADE, related_name='transacciones')
-    tipo_transaccion = models.CharField(max_length=50) # Consider adding choices for this too
+    perfil = models.ForeignKey(
+        PerfilOperativo, on_delete=models.CASCADE, related_name="transacciones"
+    )
+    tipo_transaccion = models.CharField(
+        max_length=50
+    )  # Consider adding choices for this too
     monto = models.DecimalField(max_digits=12, decimal_places=2)
     fecha_transaccion = models.DateTimeField()
     metodo_pago = models.CharField(max_length=100)
-    estado = models.CharField(max_length=50) # Consider adding choices for this
+    estado = models.CharField(max_length=50)  # Consider adding choices for this
 
     class Meta:
-        db_table = 'transacciones_financieras'
-        verbose_name = 'Transacción Financiera'
-        verbose_name_plural = 'Transacciones Financieras'
+        db_table = "transacciones_financieras"
+        verbose_name = "Transacción Financiera"
+        verbose_name_plural = "Transacciones Financieras"
+
 
 class PlanificacionRotacion(models.Model):
     id_planificacion = models.AutoField(primary_key=True)
-    perfil = models.ForeignKey(PerfilOperativo, on_delete=models.CASCADE, related_name='planificaciones')
+    perfil = models.ForeignKey(
+        PerfilOperativo, on_delete=models.CASCADE, related_name="planificaciones"
+    )
     fecha = models.DateField()
-    estado_dia = models.CharField(max_length=1, choices=[('A', 'Activo'), ('D', 'Descanso')])
+    estado_dia = models.CharField(
+        max_length=1, choices=[("A", "Activo"), ("D", "Descanso")]
+    )
     mes = models.IntegerField()
     anio = models.IntegerField()
 
     class Meta:
-        db_table = 'planificacion_rotacion'
-        verbose_name = 'Planificación Rotación'
-        verbose_name_plural = 'Planificaciones de Rotación'
+        db_table = "planificacion_rotacion"
+        verbose_name = "Planificación Rotación"
+        verbose_name_plural = "Planificaciones de Rotación"
+
 
 class AlertaOperativa(models.Model):
     id_alerta = models.AutoField(primary_key=True)
     tipo_alerta = models.CharField(max_length=100)
     descripcion = models.TextField()
     severidad = models.CharField(max_length=20)
-    perfil_afectado = models.ForeignKey(PerfilOperativo, on_delete=models.CASCADE, null=True, blank=True)
-    casa_afectada = models.ForeignKey(CasaApuestas, on_delete=models.CASCADE, null=True, blank=True)
+    perfil_afectado = models.ForeignKey(
+        PerfilOperativo, on_delete=models.CASCADE, null=True, blank=True
+    )
+    casa_afectada = models.ForeignKey(
+        CasaApuestas, on_delete=models.CASCADE, null=True, blank=True
+    )
     estado = models.CharField(max_length=50)
 
     class Meta:
-        db_table = 'alertas_operativas'
-        verbose_name = 'Alerta Operativa'
-        verbose_name_plural = 'Alertas Operativas'
+        db_table = "alertas_operativas"
+        verbose_name = "Alerta Operativa"
+        verbose_name_plural = "Alertas Operativas"
+
 
 class BitacoraMando(models.Model):
     id_bitacora = models.AutoField(primary_key=True)
-    perfil = models.ForeignKey(PerfilOperativo, on_delete=models.CASCADE, related_name='entradas_bitacora')
+    perfil = models.ForeignKey(
+        PerfilOperativo, on_delete=models.CASCADE, related_name="entradas_bitacora"
+    )
     fecha_registro = models.DateTimeField(auto_now_add=True)
     observacion = models.TextField()
-    usuario_registro = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    usuario_registro = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True
+    )
 
     class Meta:
-        db_table = 'bitacora_mando'
-        verbose_name = 'Bitácora de Mando'
-        verbose_name_plural = 'Bitácoras de Mando'
+        db_table = "bitacora_mando"
+        verbose_name = "Bitácora de Mando"
+        verbose_name_plural = "Bitácoras de Mando"
+
 
 class Operacion(models.Model):
     id_operacion = models.AutoField(primary_key=True)
-    perfil = models.ForeignKey(PerfilOperativo, on_delete=models.CASCADE, related_name='operaciones_reales')
-    fecha_registro = models.DateTimeField(null=True, blank=True, help_text="Fecha y hora exacta de la operación")
-    importe = models.DecimalField(max_digits=12, decimal_places=2, help_text="Stake o monto apostado")
-    cuota = models.DecimalField(max_digits=6, decimal_places=2, help_text="Odds de la apuesta")
-    estado = models.CharField(max_length=20, choices=[
-        ('PENDIENTE', 'Pendiente'),
-        ('GANADA', 'Ganada'),
-        ('PERDIDA', 'Perdida'),
-        ('ANULADA', 'Anulada')
-    ], default='PENDIENTE')
-    payout = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Retorno total (Stake + Profit)")
-    profit_loss = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Resultado neto (P&L)")
-    
-    deporte = models.CharField(max_length=50, blank=True, null=True)
-    mercado = models.CharField(max_length=100, blank=True, null=True, help_text="Ej: Ganador del partido, Over 2.5")
+    perfil = models.ForeignKey(
+        PerfilOperativo, on_delete=models.CASCADE, related_name="operaciones_reales"
+    )
+    fecha_registro = models.DateTimeField(
+        null=True, blank=True, help_text="Fecha y hora exacta de la operación"
+    )
+    importe = models.DecimalField(
+        max_digits=12, decimal_places=2, help_text="Stake o monto apostado"
+    )
+    cuota = models.DecimalField(
+        max_digits=6, decimal_places=2, help_text="Odds de la apuesta"
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=[
+            ("PENDIENTE", "Pendiente"),
+            ("GANADA", "Ganada"),
+            ("PERDIDA", "Perdida"),
+            ("ANULADA", "Anulada"),
+        ],
+        default="PENDIENTE",
+    )
+    payout = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Retorno total (Stake + Profit)",
+    )
+    profit_loss = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Resultado neto (P&L)",
+    )
+
+    deporte = models.ForeignKey(
+        Deporte,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="operaciones",
+    )
+    mercado = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Ej: Ganador del partido, Over 2.5",
+    )
 
     class Meta:
-        db_table = 'operaciones'
-        verbose_name = 'Operación'
-        verbose_name_plural = 'Operaciones'
-        ordering = ['-fecha_registro']
+        db_table = "operaciones"
+        verbose_name = "Operación"
+        verbose_name_plural = "Operaciones"
+        ordering = ["-fecha_registro"]
 
     def __str__(self):
         return f"Op {self.id_operacion} - {self.perfil} - ${self.importe}"
