@@ -13,6 +13,10 @@ class DeportesChoices(models.TextChoices):
     TENIS_DE_MESA = "TENIS_DE_MESA", "Tennis de Mesa"
     OTROS = "OTROS", "Otros"
 
+class TipoDocumentoChoices(models.TextChoices):
+    CEDULA = "CEDULA", "Cédula de Identidad"
+    PASAPORTE = "PASAPORTE", "Pasaporte"
+    LICENCIA = "LICENCIA", "Licencia de Conducir"
 
 class TipoJugadorChoices(models.TextChoices):
     PROFESIONAL = "PROFESIONAL", "Profesional"

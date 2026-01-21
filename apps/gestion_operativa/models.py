@@ -1,6 +1,11 @@
 from django.db import models
 from django.conf import settings
-from .choices import TipoJugadorChoices, NivelCuentaChoices, DeportesChoices
+from .choices import (
+    TipoJugadorChoices,
+    TipoDocumentoChoices,
+    NivelCuentaChoices,
+    DeportesChoices,
+)
 
 
 # ============================================================================
@@ -170,6 +175,63 @@ class Ubicacion(models.Model):
         return f"{self.ciudad} - {self.direccion}"
 
 
+class Persona(models.Model):
+    """Datos de identidad de una persona para crear cuentas en casas de apuestas."""
+
+    id_persona = models.AutoField(primary_key=True)
+
+    # Datos personales
+    primer_nombre = models.CharField(max_length=100)
+    segundo_nombre = models.CharField(max_length=100, blank=True, null=True)
+    primer_apellido = models.CharField(max_length=100)
+    segundo_apellido = models.CharField(max_length=100, blank=True, null=True)
+
+    # Documento de identidad
+    tipo_documento = models.CharField(
+        max_length=20, choices=TipoDocumentoChoices.choices
+    )
+    numero_documento = models.CharField(max_length=50, unique=True)
+
+    # Contacto y ubicación
+    fecha_nacimiento = models.DateField()
+    pais = models.CharField(max_length=100, default="Ecuador")
+    telefono = models.CharField(max_length=20)
+    correo_electronico = models.EmailField(unique=True)
+    direccion = models.CharField(max_length=255, blank=True, null=True)
+
+    # Documentos KYC (archivos)
+    foto_rostro = models.ImageField(upload_to="personas/fotos/", blank=True, null=True)
+    documento_frente = models.ImageField(
+        upload_to="personas/documentos/", blank=True, null=True
+    )
+    documento_reverso = models.ImageField(
+        upload_to="personas/documentos/", blank=True, null=True
+    )
+
+    # Auditoría
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "personas"
+        verbose_name = "Persona"
+        verbose_name_plural = "Personas"
+
+    def __str__(self):
+        return f"{self.primer_nombre} {self.primer_apellido} - {self.numero_documento}"
+
+    @property
+    def nombre_completo(self):
+        """Retorna el nombre completo de la persona."""
+        nombres = [
+            self.primer_nombre,
+            self.segundo_nombre,
+            self.primer_apellido,
+            self.segundo_apellido,
+        ]
+        return " ".join(filter(None, nombres))
+
+
 class Agencia(models.Model):
     id_agencia = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
@@ -214,6 +276,12 @@ class PerfilOperativo(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="perfiles_operativos",
+    )
+    persona = models.ForeignKey(
+        Persona,
+        on_delete=models.CASCADE,
+        related_name="perfiles",
+        help_text="Datos de identidad usados para crear esta cuenta",
     )
 
     # Agencia obligatoria (se selecciona de las disponibles)
