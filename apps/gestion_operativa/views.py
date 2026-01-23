@@ -1,6 +1,9 @@
-from rest_framework import serializers, viewsets
+from rest_framework import serializers, viewsets, status
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models import Sum
 
 from .models import (
     Distribuidora,
@@ -19,6 +22,7 @@ from .models import (
     ProvinciaEstado,
     Ciudad,
     Persona,
+    ObjetivoCreacionPerfiles,
 )
 from .serializers import (
     DistribuidoraSerializer,
@@ -39,6 +43,7 @@ from .serializers import (
     ProvinciaEstadoSerializer,
     CiudadSerializer,
     PersonaSerializer,
+    ObjetivoCreacionPerfilesSerializer,
 )
 
 
@@ -343,3 +348,188 @@ class BitacoraMandoViewSet(viewsets.ModelViewSet):
     serializer_class = BitacoraMandoSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardPagination
+
+
+# ============================================================================
+# OBJETIVOS CREACIÓN PERFILES VIEWSET
+# ============================================================================
+
+
+class ObjetivoCreacionPerfilesViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar objetivos de creación de perfiles.
+
+    Endpoints disponibles:
+    - GET /objetivos-perfiles/ - Listar todos los objetivos
+    - POST /objetivos-perfiles/ - Crear nuevo objetivo
+    - GET /objetivos-perfiles/{id}/ - Detalle de un objetivo
+    - PUT /objetivos-perfiles/{id}/ - Actualizar objetivo
+    - DELETE /objetivos-perfiles/{id}/ - Eliminar objetivo
+    - GET /objetivos-perfiles/pendientes/ - Solo objetivos no completados
+    - GET /objetivos-perfiles/estadisticas/ - Estadísticas generales
+    - GET /objetivos-perfiles/calendario_eventos/ - Eventos para calendario
+    """
+
+    queryset = ObjetivoCreacionPerfiles.objects.select_related("agencia").all()
+    serializer_class = ObjetivoCreacionPerfilesSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
+
+    def get_queryset(self):
+        """Filtra por agencia y/o estado de completado."""
+        queryset = super().get_queryset()
+
+        # Filtrar por agencia si se especifica
+        agencia_id = self.request.query_params.get("agencia", None)
+        if agencia_id:
+            queryset = queryset.filter(agencia_id=agencia_id)
+
+        # Filtrar por estado de completado
+        completado = self.request.query_params.get("completado", None)
+        if completado is not None:
+            completado_bool = completado.lower() in ["true", "1", "yes"]
+            queryset = queryset.filter(completado=completado_bool)
+
+        return queryset
+
+    @action(detail=False, methods=["get"])
+    def pendientes(self, request):
+        """
+        GET /objetivos-perfiles/pendientes/
+
+        Retorna todos los objetivos NO completados, ordenados por fecha límite.
+        Ideal para el dashboard de "Perfiles pendientes".
+        """
+        objetivos = self.get_queryset().filter(completado=False).order_by("fecha_limite")
+        serializer = self.get_serializer(objetivos, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def estadisticas(self, request):
+        """
+        GET /objetivos-perfiles/estadisticas/
+
+        Retorna estadísticas generales de objetivos:
+        - Total de objetivos
+        - Objetivos completados
+        - Objetivos pendientes
+        - Total de perfiles objetivo
+        - Total de perfiles completados
+        """
+        qs = self.get_queryset()
+        stats = {
+            "total_objetivos": qs.count(),
+            "objetivos_completados": qs.filter(completado=True).count(),
+            "objetivos_pendientes": qs.filter(completado=False).count(),
+            "total_perfiles_objetivo": qs.aggregate(Sum("cantidad_objetivo"))[
+                "cantidad_objetivo__sum"
+            ]
+            or 0,
+            "total_perfiles_completados": qs.aggregate(Sum("cantidad_completada"))[
+                "cantidad_completada__sum"
+            ]
+            or 0,
+        }
+
+        return Response(stats)
+
+    @action(detail=False, methods=["get"])
+    def calendario_eventos(self, request):
+        """
+        GET /objetivos-perfiles/calendario_eventos/
+
+        Retorna eventos para calendario gráfico:
+        - Fechas límite de objetivos (eventos futuros/pasados)
+        - Perfiles creados (eventos históricos)
+
+        Formato de respuesta: Lista de eventos con tipo, fecha, y datos relacionados.
+        """
+        eventos = []
+        objetivos = ObjetivoCreacionPerfiles.objects.select_related("agencia").all()
+
+        for objetivo in objetivos:
+            # Evento: fecha límite del objetivo
+            eventos.append(
+                {
+                    "id": f"objetivo-{objetivo.id_objetivo}",
+                    "tipo": "fecha_limite",
+                    "titulo": f"Límite: {objetivo.agencia.nombre}",
+                    "agencia_id": objetivo.agencia.id_agencia,
+                    "agencia_nombre": objetivo.agencia.nombre,
+                    "fecha": objetivo.fecha_limite.isoformat(),
+                    "cantidad_objetivo": objetivo.cantidad_objetivo,
+                    "cantidad_completada": objetivo.cantidad_completada,
+                    "perfiles_restantes": objetivo.perfiles_restantes,
+                    "completado": objetivo.completado,
+                    "color": "green" if objetivo.completado else "red",
+                }
+            )
+
+            # Obtener perfiles creados para este objetivo (dentro del rango de fechas)
+            perfiles = PerfilOperativo.objects.filter(
+                agencia=objetivo.agencia,
+                fecha_creacion__gte=objetivo.fecha_inicio,
+                fecha_creacion__lte=objetivo.fecha_limite,
+            ).order_by("fecha_creacion")
+
+            for idx, perfil in enumerate(perfiles, 1):
+                if perfil.fecha_creacion:  # Validar que existe el timestamp
+                    eventos.append(
+                        {
+                            "id": f"perfil-{perfil.id_perfil}",
+                            "tipo": "perfil_creado",
+                            "titulo": f"Perfil #{idx} - {objetivo.agencia.nombre}",
+                            "agencia_id": objetivo.agencia.id_agencia,
+                            "agencia_nombre": objetivo.agencia.nombre,
+                            "fecha": perfil.fecha_creacion.date().isoformat(),
+                            "hora": perfil.fecha_creacion.time().isoformat(),
+                            "nombre_usuario": perfil.nombre_usuario,
+                            "tipo_jugador": perfil.tipo_jugador,
+                            "color": "blue",
+                        }
+                    )
+
+        return Response(eventos)
+
+    @action(detail=False, methods=["get"], url_path="historial-por-agencia")
+    def historial_por_agencia(self, request):
+        """
+        GET /objetivos-perfiles/historial-por-agencia/?agencia_id=<ID>
+
+        Retorna objetivos y perfiles creados de una agencia específica.
+        Útil para ver el historial completo de una agencia en una sola request.
+        """
+        agencia_id = request.query_params.get("agencia_id")
+        if not agencia_id:
+            return Response(
+                {"error": "Se requiere el parámetro agencia_id"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Obtener objetivos de la agencia
+        objetivos = self.get_queryset().filter(agencia_id=agencia_id)
+
+        # Obtener perfiles creados de la agencia
+        perfiles = PerfilOperativo.objects.filter(agencia_id=agencia_id).order_by(
+            "-fecha_creacion"
+        )
+
+        return Response(
+            {
+                "agencia_id": int(agencia_id),
+                "objetivos": self.get_serializer(objetivos, many=True).data,
+                "perfiles_creados": [
+                    {
+                        "id_perfil": p.id_perfil,
+                        "nombre_usuario": p.nombre_usuario,
+                        "fecha_creacion": p.fecha_creacion.isoformat()
+                        if p.fecha_creacion
+                        else None,
+                        "tipo_jugador": p.tipo_jugador,
+                        "nivel_cuenta": p.nivel_cuenta,
+                        "activo": p.activo,
+                    }
+                    for p in perfiles
+                ],
+            }
+        )

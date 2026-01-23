@@ -15,6 +15,7 @@ from .models import (
     Ciudad,
     Ubicacion,
     Persona,
+    ObjetivoCreacionPerfiles,
 )
 
 
@@ -170,3 +171,77 @@ class PersonaAdmin(admin.ModelAdmin):
             'fields': ('activo', 'fecha_registro')
         }),
     )
+
+
+@admin.register(ObjetivoCreacionPerfiles)
+class ObjetivoCreacionPerfilesAdmin(admin.ModelAdmin):
+    """Admin para objetivos de creación de perfiles."""
+
+    list_display = (
+        "id_objetivo",
+        "agencia",
+        "cantidad_objetivo",
+        "cantidad_completada",
+        "perfiles_restantes_display",
+        "porcentaje_completado_display",
+        "fecha_limite",
+        "completado_display",
+    )
+    list_filter = ("completado", "fecha_creacion", "agencia")
+    search_fields = ("agencia__nombre",)
+    readonly_fields = (
+        "fecha_inicio",
+        "fecha_limite",
+        "fecha_creacion",
+        "fecha_actualizacion",
+        "perfiles_restantes_display",
+        "porcentaje_completado_display",
+    )
+    ordering = ("-fecha_creacion",)
+
+    fieldsets = (
+        (
+            "Información Básica",
+            {"fields": ("agencia", "cantidad_objetivo", "plazo_dias")},
+        ),
+        (
+            "Progreso",
+            {
+                "fields": (
+                    "cantidad_completada",
+                    "perfiles_restantes_display",
+                    "porcentaje_completado_display",
+                    "completado",
+                )
+            },
+        ),
+        (
+            "Fechas",
+            {
+                "fields": (
+                    "fecha_inicio",
+                    "fecha_limite",
+                    "fecha_creacion",
+                    "fecha_actualizacion",
+                )
+            },
+        ),
+    )
+
+    def perfiles_restantes_display(self, obj):
+        """Muestra perfiles restantes en el admin."""
+        return obj.perfiles_restantes
+
+    perfiles_restantes_display.short_description = "Faltan"
+
+    def porcentaje_completado_display(self, obj):
+        """Muestra porcentaje completado en el admin."""
+        return f"{obj.porcentaje_completado}%"
+
+    porcentaje_completado_display.short_description = "% Completado"
+
+    def completado_display(self, obj):
+        """Muestra un icono visual para el estado completado."""
+        return "✅" if obj.completado else "❌"
+
+    completado_display.short_description = "Estado"

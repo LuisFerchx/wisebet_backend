@@ -239,9 +239,6 @@ class Agencia(models.Model):
     rake_porcentaje = models.DecimalField(
         max_digits=5, decimal_places=2, default=0, help_text="% Rake"
     )
-    perfiles_totales = models.IntegerField(
-        default=0, help_text="Total de perfiles en esta agencia"
-    )
     url_backoffice = models.URLField(blank=True, null=True)
     tiene_arrastre = models.BooleanField(
         default=False, help_text="¿Esta agencia tiene arrastre?"
@@ -257,6 +254,14 @@ class Agencia(models.Model):
 
     def __str__(self):
         return self.nombre
+
+    @property
+    def perfiles_totales(self):
+        """
+        Cuenta dinámicamente el total de perfiles asociados a esta agencia.
+        Retorna el número de perfiles activos y no activos.
+        """
+        return self.perfiles.count()
 
     def calcular_ggr(self):
         """
@@ -332,6 +337,11 @@ class PerfilOperativo(models.Model):
     
     meta_ops_semanales = models.IntegerField(default=0)
     activo = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(
+        auto_now_add=True,
+        null=True,
+        help_text="Fecha y hora de creación del perfil"
+    )
 
     class Meta:
         db_table = "perfiles_operativos"
@@ -521,3 +531,71 @@ class Operacion(models.Model):
         if self.payout is not None and self.importe:
             self.profit_loss = self.payout - self.importe
         super(Operacion, self).save(*args, **kwargs)
+
+
+class ObjetivoCreacionPerfiles(models.Model):
+    """Sistema de planificación para creación de perfiles en agencias."""
+
+    id_objetivo = models.AutoField(primary_key=True)
+    agencia = models.ForeignKey(
+        Agencia,
+        on_delete=models.CASCADE,
+        related_name="objetivos_perfiles",
+        help_text="Agencia a la que pertenece este objetivo"
+    )
+    cantidad_objetivo = models.PositiveIntegerField(
+        help_text="Cantidad total de perfiles que se planea crear"
+    )
+    cantidad_completada = models.PositiveIntegerField(
+        default=0,
+        help_text="Cantidad de perfiles ya creados para este objetivo"
+    )
+    plazo_dias = models.PositiveIntegerField(
+        help_text="Plazo en días para completar el objetivo"
+    )
+    fecha_inicio = models.DateField(
+        auto_now_add=True,
+        help_text="Fecha en que se creó el objetivo"
+    )
+    fecha_limite = models.DateField(
+        help_text="Fecha límite para cumplir el objetivo (calculada automáticamente)"
+    )
+    completado = models.BooleanField(
+        default=False,
+        help_text="Indica si el objetivo ya fue cumplido"
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "objetivos_creacion_perfiles"
+        ordering = ["-fecha_creacion"]
+        verbose_name = "Objetivo de Creación de Perfiles"
+        verbose_name_plural = "Objetivos de Creación de Perfiles"
+
+    def __str__(self):
+        return f"{self.agencia.nombre}: {self.cantidad_completada}/{self.cantidad_objetivo} perfiles"
+
+    @property
+    def perfiles_restantes(self):
+        """Calcula cuántos perfiles faltan por crear."""
+        return max(0, self.cantidad_objetivo - self.cantidad_completada)
+
+    @property
+    def porcentaje_completado(self):
+        """Calcula el porcentaje de avance del objetivo."""
+        if self.cantidad_objetivo == 0:
+            return 0
+        return round((self.cantidad_completada / self.cantidad_objetivo) * 100, 2)
+
+    def save(self, *args, **kwargs):
+        """Override save para calcular fecha_limite automáticamente."""
+        if not self.fecha_limite and not self.pk:
+            from datetime import date, timedelta
+            self.fecha_limite = date.today() + timedelta(days=self.plazo_dias)
+
+        # Auto-marcar como completado si se alcanzó el objetivo
+        if self.cantidad_completada >= self.cantidad_objetivo:
+            self.completado = True
+
+        super().save(*args, **kwargs)

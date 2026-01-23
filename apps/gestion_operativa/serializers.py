@@ -18,6 +18,7 @@ from .models import (
     ProvinciaEstado,
     Ciudad,
     Persona,
+    ObjetivoCreacionPerfiles,
 )
 
 
@@ -180,6 +181,7 @@ class AgenciaSerializer(serializers.ModelSerializer):
     ubicacion_detalle = UbicacionSerializer(source="ubicacion", read_only=True)
     casa_madre_nombre = serializers.ReadOnlyField(source="casa_madre.nombre")
     ggr = serializers.SerializerMethodField()
+    perfiles_totales = serializers.ReadOnlyField()
 
     class Meta:
         model = Agencia
@@ -198,6 +200,61 @@ class AgenciaSerializer(serializers.ModelSerializer):
                 activo=True
             )
         return fields
+
+
+class ObjetivoCreacionPerfilesSerializer(serializers.ModelSerializer):
+    """Serializer para objetivos de creación de perfiles."""
+
+    agencia_nombre = serializers.CharField(source="agencia.nombre", read_only=True)
+    perfiles_restantes = serializers.IntegerField(read_only=True)
+    porcentaje_completado = serializers.FloatField(read_only=True)
+
+    class Meta:
+        model = ObjetivoCreacionPerfiles
+        fields = [
+            "id_objetivo",
+            "agencia",
+            "agencia_nombre",
+            "cantidad_objetivo",
+            "cantidad_completada",
+            "plazo_dias",
+            "fecha_inicio",
+            "fecha_limite",
+            "completado",
+            "perfiles_restantes",
+            "porcentaje_completado",
+            "fecha_creacion",
+            "fecha_actualizacion",
+        ]
+        read_only_fields = [
+            "id_objetivo",
+            "fecha_inicio",
+            "fecha_limite",
+            "fecha_creacion",
+            "fecha_actualizacion",
+            "cantidad_completada",
+            "completado",
+        ]
+
+    def validate_cantidad_objetivo(self, value):
+        """Valida que la cantidad objetivo sea válida."""
+        if value <= 0:
+            raise serializers.ValidationError(
+                "La cantidad objetivo debe ser mayor a 0"
+            )
+        if value > 100:
+            raise serializers.ValidationError(
+                "La cantidad objetivo no puede exceder 100 perfiles"
+            )
+        return value
+
+    def validate_plazo_dias(self, value):
+        """Valida que el plazo sea válido."""
+        if value <= 0:
+            raise serializers.ValidationError("El plazo debe ser mayor a 0 días")
+        if value > 365:
+            raise serializers.ValidationError("El plazo no puede exceder 365 días")
+        return value
 
 
 # ============================================================================

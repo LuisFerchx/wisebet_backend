@@ -17,6 +17,7 @@ from .views import (
     ProvinciaEstadoViewSet,
     CiudadViewSet,
     PersonaViewSet,
+    ObjetivoCreacionPerfilesViewSet,
 )
 
 router = DefaultRouter()
@@ -36,6 +37,7 @@ router.register(r"paises", PaisViewSet)
 router.register(r"provincias", ProvinciaEstadoViewSet)
 router.register(r"ciudades", CiudadViewSet)
 router.register(r"personas", PersonaViewSet)
+router.register(r"objetivos-perfiles", ObjetivoCreacionPerfilesViewSet, basename="objetivos-perfiles")
 
 urlpatterns = [
     path("", include(router.urls)),
