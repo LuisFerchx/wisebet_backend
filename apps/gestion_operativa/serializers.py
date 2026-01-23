@@ -17,6 +17,7 @@ from .models import (
     Pais,
     ProvinciaEstado,
     Ciudad,
+    Persona,
 )
 
 
@@ -55,6 +56,17 @@ class CiudadSerializer(serializers.ModelSerializer):
 
 
 # ============================================================================
+# PERSOANA SERIALIZERS
+# ============================================================================
+
+
+class PersonaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Persona
+        fields = "__all__"
+
+
+# ============================================================================
 # UBICACIÓN SERIALIZERS
 # ============================================================================
 
@@ -86,14 +98,46 @@ class CasaApuestasSimpleSerializer(serializers.ModelSerializer):
         fields = ["id_casa", "nombre", "url_backoffice", "activo"]
 
 
+class CasaApuestasExpandedSerializer(serializers.ModelSerializer):
+    """Serializer para casas anidadas en distribuidoras (con booleanos)."""
+
+    class Meta:
+        model = CasaApuestas
+        fields = [
+            "id_casa",
+            "nombre",
+            "url_backoffice",
+            "puede_tener_agencia",
+            "activo",
+        ]
+
+class CasaApuestasCreateSerializer(serializers.ModelSerializer):
+    """Serializer para creación de casas de apuestas (solo campos iniciales)."""
+
+    class Meta:
+        model = CasaApuestas
+        fields = [
+            "nombre",
+            "url_backoffice",
+            "puede_tener_agencia",
+            "activo",
+            "distribuidora",
+        ]
+
+
 class CasaApuestasSerializer(serializers.ModelSerializer):
     """Serializer completo para casas con nombre de distribuidora."""
 
     distribuidora_nombre = serializers.ReadOnlyField(source="distribuidora.nombre")
+    nro_agencias = serializers.SerializerMethodField()
 
     class Meta:
         model = CasaApuestas
         fields = "__all__"
+
+    def get_nro_agencias(self, obj):
+        """Calcula dinámicamente el número de agencias activas."""
+        return obj.agencias.count()
 
 
 # ============================================================================
@@ -117,9 +161,9 @@ class DistribuidoraSerializer(serializers.ModelSerializer):
 
 
 class DistribuidoraExpandedSerializer(DistribuidoraSerializer):
-    """Serializer expandido que incluye las casas anidadas."""
+    """Serializer expandido que incluye las casas anidadas con booleanos."""
 
-    casas = CasaApuestasSimpleSerializer(many=True, read_only=True)
+    casas = CasaApuestasExpandedSerializer(many=True, read_only=True)
 
     class Meta(DistribuidoraSerializer.Meta):
         pass
@@ -135,10 +179,25 @@ class AgenciaSerializer(serializers.ModelSerializer):
 
     ubicacion_detalle = UbicacionSerializer(source="ubicacion", read_only=True)
     casa_madre_nombre = serializers.ReadOnlyField(source="casa_madre.nombre")
+    ggr = serializers.SerializerMethodField()
 
     class Meta:
         model = Agencia
         fields = "__all__"
+
+    def get_ggr(self, obj):
+        """Calcula GGR (Gross Gaming Revenue) del mes actual."""
+        return round(obj.calcular_ggr(), 2)
+
+    def get_fields(self):
+        """Filtra casas_madre para mostrar solo aquellas que pueden tener agencias."""
+        fields = super().get_fields()
+        if 'casa_madre' in fields:
+            fields['casa_madre'].queryset = CasaApuestas.objects.filter(
+                puede_tener_agencia=True,
+                activo=True
+            )
+        return fields
 
 
 # ============================================================================
@@ -165,45 +224,39 @@ class OperacionSerializer(serializers.ModelSerializer):
 class PerfilOperativoSerializer(serializers.ModelSerializer):
     """Serializer para perfiles con campos calculados dinámicamente."""
 
-    usuario_username = serializers.ReadOnlyField(source="usuario.username")
+    usuario_username = serializers.ReadOnlyField(source="usuario.username", allow_null=True)
     casa_nombre = serializers.SerializerMethodField()
+    distribuidora_nombre = serializers.SerializerMethodField()
     agencia_nombre = serializers.ReadOnlyField(source="agencia.nombre")
-    ubicacion_ciudad = serializers.ReadOnlyField(
-        source="agencia.ubicacion.ciudad.nombre"
-    )
     deporte_nombre = serializers.ReadOnlyField(source="deporte_dna.nombre")
 
     # Campos calculados dinámicamente desde Operacion
-    saldo_real = serializers.SerializerMethodField()
     stake_promedio = serializers.SerializerMethodField()
     ops_semanales = serializers.SerializerMethodField()
     ops_mensuales = serializers.SerializerMethodField()
     ops_historicas = serializers.SerializerMethodField()
+    profit_loss_total = serializers.SerializerMethodField()
 
     class Meta:
         model = PerfilOperativo
         fields = "__all__"
+        extra_kwargs = {
+            "usuario": {"required": False, "allow_null": True},  # Se asigna dinámicamente después
+        }
 
     def get_casa_nombre(self, obj):
         if obj.agencia and obj.agencia.casa_madre:
             return obj.agencia.casa_madre.nombre
         return None
 
-    def get_saldo_real(self, obj):
-        """Calcula saldo desde TransaccionFinanciera."""
-        depositos = (
-            obj.transacciones.filter(tipo_transaccion__icontains="deposito").aggregate(
-                total=Sum("monto")
-            )["total"]
-            or 0
-        )
-        retiros = (
-            obj.transacciones.filter(tipo_transaccion__icontains="retiro").aggregate(
-                total=Sum("monto")
-            )["total"]
-            or 0
-        )
-        return float(depositos - retiros)
+    def get_distribuidora_nombre(self, obj):
+        if (
+            obj.agencia
+            and obj.agencia.casa_madre
+            and obj.agencia.casa_madre.distribuidora
+        ):
+            return obj.agencia.casa_madre.distribuidora.nombre
+        return None
 
     def get_stake_promedio(self, obj):
         """Calcula stake promedio desde Operacion."""
@@ -229,6 +282,11 @@ class PerfilOperativoSerializer(serializers.ModelSerializer):
         """Cuenta total de operaciones."""
         return obj.operaciones_reales.count()
 
+    def get_profit_loss_total(self, obj):
+        """Calcula ganancia/pérdida total desde Operacion."""
+        total = obj.operaciones_reales.aggregate(total=Sum("profit_loss"))["total"]
+        return float(total) if total else 0.0
+
 
 # ============================================================================
 # CONFIGURACIÓN OPERATIVA SERIALIZERS
@@ -236,9 +294,22 @@ class PerfilOperativoSerializer(serializers.ModelSerializer):
 
 
 class ConfiguracionOperativaSerializer(serializers.ModelSerializer):
+    """Serializer para configuración operativa con campos calculados."""
+    
+    capital_total_activos = serializers.SerializerMethodField()
+
     class Meta:
         model = ConfiguracionOperativa
         fields = "__all__"
+
+    def get_capital_total_activos(self, obj):
+        """
+        Calcula la suma de saldos de todos los perfiles ACTIVOS.
+        """
+        total = PerfilOperativo.objects.filter(
+            activo=True
+        ).aggregate(total=Sum("saldo_actual"))["total"] or 0
+        return float(total)
 
 
 # ============================================================================

@@ -14,6 +14,7 @@ from .models import (
     ProvinciaEstado,
     Ciudad,
     Ubicacion,
+    Persona,
 )
 
 
@@ -65,7 +66,6 @@ class CasaApuestasAdmin(admin.ModelAdmin):
         "nombre",
         "distribuidora",
         "capital_activo_hoy",
-        "nro_agencias",
         "activo",
     )
     search_fields = ("nombre", "distribuidora__nombre")
@@ -96,7 +96,7 @@ class PerfilOperativoAdmin(admin.ModelAdmin):
 
 @admin.register(ConfiguracionOperativa)
 class ConfiguracionOperativaAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "capital_total_activos", "actualizar_meta_diariamente")
+    list_display = ("__str__", "meta_volumen_diario", "actualizar_meta_diariamente")
 
 
 @admin.register(TransaccionFinanciera)
@@ -129,3 +129,44 @@ class AlertaOperativaAdmin(admin.ModelAdmin):
 class BitacoraMandoAdmin(admin.ModelAdmin):
     list_display = ("perfil", "fecha_registro", "usuario_registro")
     search_fields = ("perfil__nombre_usuario", "observacion")
+
+@admin.register(Persona)
+class PersonaAdmin(admin.ModelAdmin):
+    list_display = (
+        'nombre_completo',
+        'tipo_documento', 
+        'numero_documento',
+        'pais',
+        'telefono',
+        'activo'
+    )
+    search_fields = (
+        'primer_nombre', 
+        'segundo_nombre',
+        'primer_apellido', 
+        'segundo_apellido',
+        'numero_documento',
+        'correo_electronico'
+    )
+    list_filter = ('tipo_documento', 'pais', 'activo', 'fecha_registro')
+    readonly_fields = ('nombre_completo', 'fecha_registro')
+    
+    fieldsets = (
+        ('Información Personal', {
+            'fields': ('primer_nombre', 'segundo_nombre', 'primer_apellido', 
+                      'segundo_apellido', 'fecha_nacimiento')
+        }),
+        ('Documentación', {
+            'fields': ('tipo_documento', 'numero_documento', 'pais')
+        }),
+        ('Contacto', {
+            'fields': ('telefono', 'correo_electronico', 'direccion')
+        }),
+        ('Documentos KYC', {
+            'fields': ('foto_rostro', 'documento_frente', 'documento_reverso'),
+            'classes': ('collapse',)  # Se muestra colapsado por defecto
+        }),
+        ('Estado', {
+            'fields': ('activo', 'fecha_registro')
+        }),
+    )

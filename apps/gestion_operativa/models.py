@@ -1,16 +1,13 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
+from django.db.models import Sum
 from .choices import (
     TipoJugadorChoices,
     TipoDocumentoChoices,
     NivelCuentaChoices,
     DeportesChoices,
 )
-
-
-# ============================================================================
-# MODELOS BASE - CATÁLOGOS
-# ============================================================================
 
 
 class Deporte(models.Model):
@@ -89,11 +86,6 @@ class Ciudad(models.Model):
         return f"{self.nombre}, {self.provincia.nombre}"
 
 
-# ============================================================================
-# MODELOS DE NEGOCIO
-# ============================================================================
-
-
 class Distribuidora(models.Model):
     id_distribuidora = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
@@ -120,14 +112,14 @@ class CasaApuestas(models.Model):
         Distribuidora, on_delete=models.CASCADE, related_name="casas"
     )
     nombre = models.CharField(max_length=100)
-    nro_agencias = models.IntegerField(
-        default=0, help_text="Número de agencias asociadas"
-    )
     url_backoffice = models.URLField(blank=True, null=True)
     capital_activo_hoy = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     capital_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     fecha_actualizacion_capital = models.DateTimeField(auto_now=True)
     perfiles_minimos_req = models.IntegerField(default=0)
+    puede_tener_agencia = models.BooleanField(
+        default=True, help_text="¿Esta casa puede tener agencias?"
+    )
     activo = models.BooleanField(default=True)
 
     class Meta:
@@ -235,18 +227,12 @@ class Persona(models.Model):
 class Agencia(models.Model):
     id_agencia = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
-
-    # Ubicación Normalizada
     ubicacion = models.ForeignKey(
         Ubicacion, on_delete=models.SET_NULL, null=True, related_name="agencias"
     )
-
-    # Gestión
     responsable = models.CharField(max_length=100)
     contacto = models.CharField(max_length=100, blank=True, null=True)
     email = models.EmailField(max_length=255, blank=True, null=True)
-
-    # Operatividad
     casa_madre = models.ForeignKey(
         CasaApuestas, on_delete=models.SET_NULL, null=True, related_name="agencias"
     )
@@ -257,6 +243,9 @@ class Agencia(models.Model):
         default=0, help_text="Total de perfiles en esta agencia"
     )
     url_backoffice = models.URLField(blank=True, null=True)
+    tiene_arrastre = models.BooleanField(
+        default=False, help_text="¿Esta agencia tiene arrastre?"
+    )
 
     activo = models.BooleanField(default=True)
     fecha_registro = models.DateTimeField(auto_now_add=True, null=True, blank=True)
@@ -269,6 +258,29 @@ class Agencia(models.Model):
     def __str__(self):
         return self.nombre
 
+    def calcular_ggr(self):
+        """
+        Calcula GGR (Gross Gaming Revenue) del mes actual.
+        GGR = -(Suma de profit_loss de todos los perfiles de esta agencia en el mes actual)
+        
+        Si profit_loss es positivo (perfiles ganaron), GGR es negativo (casa pierde).
+        Si profit_loss es negativo (perfiles perdieron), GGR es positivo (casa gana).
+        """
+        hoy = timezone.now()
+        perfiles_agencia = self.perfiles.all()
+        
+        # Filtrar solo operaciones del mes actual
+        total_profit_loss = 0
+        for perfil in perfiles_agencia:
+            mes_profit_loss = perfil.operaciones_reales.filter(
+                fecha_registro__year=hoy.year,
+                fecha_registro__month=hoy.month
+            ).aggregate(total=Sum("profit_loss"))["total"] or 0
+            total_profit_loss += mes_profit_loss
+        
+        # GGR es negativo del profit_loss (lo contrario)
+        return -float(total_profit_loss)
+
 
 class PerfilOperativo(models.Model):
     id_perfil = models.AutoField(primary_key=True)
@@ -276,6 +288,8 @@ class PerfilOperativo(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="perfiles_operativos",
+        null=True,
+        blank=True,
     )
     persona = models.ForeignKey(
         Persona,
@@ -288,8 +302,6 @@ class PerfilOperativo(models.Model):
     agencia = models.ForeignKey(
         Agencia, on_delete=models.CASCADE, related_name="perfiles"
     )
-
-    # Acceso directo al backoffice de la cuenta
     url_acceso_backoffice = models.URLField(
         blank=True, null=True, help_text="Link al backoffice de la cuenta"
     )
@@ -299,12 +311,25 @@ class PerfilOperativo(models.Model):
     deporte_dna = models.ForeignKey(
         Deporte, on_delete=models.SET_NULL, null=True, related_name="perfiles_dna"
     )
+    
     ip_operativa = models.GenericIPAddressField(protocol="both", unpack_ipv4=True)
-    # ciudad_sede ELIMINADO - Se obtiene de agencia.ubicacion
     preferencias = models.TextField(blank=True, null=True)
     nivel_cuenta = models.CharField(max_length=50, choices=NivelCuentaChoices.choices)
-    # Campos eliminados: saldo_real, stake_promedio, ops_semanales_actuales, ops_mensuales, ops_historicas
-    # Ahora se calculan dinámicamente desde la tabla Operacion
+    saldo_actual = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Dinero disponible en la cuenta"
+    )
+    
+    # Rango de stake (configurable)
+    stake_minimo = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Monto mínimo a apostar"
+    )
+    stake_maximo = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Monto máximo a apostar"
+    )
+    
     meta_ops_semanales = models.IntegerField(default=0)
     activo = models.BooleanField(default=True)
 
@@ -322,18 +347,24 @@ class PerfilOperativo(models.Model):
 
 class ConfiguracionOperativa(models.Model):
     id_configuracion = models.AutoField(primary_key=True)
-    capital_total_activos = models.DecimalField(
-        max_digits=15, decimal_places=2, default=0
-    )
+    # capital_total_activos se calcula dinámicamente en el serializer (suma de saldos de perfiles activos)
     meta_volumen_diario = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Meta de volumen diario de operaciones"
     )
-    perfiles_listos_operar = models.IntegerField(default=0)
-    perfiles_en_descanso = models.IntegerField(default=0)
+    perfiles_listos_operar = models.IntegerField(
+        default=0, help_text="Número de perfiles listos para operar"
+    )
+    perfiles_en_descanso = models.IntegerField(
+        default=0, help_text="Número de perfiles en descanso"
+    )
     umbral_saldo_critico = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Saldo mínimo que dispara alerta"
     )
-    actualizar_meta_diariamente = models.BooleanField(default=False)
+    actualizar_meta_diariamente = models.BooleanField(
+        default=False, help_text="¿Actualizar meta diariamente?"
+    )
 
     class Meta:
         db_table = "configuracion_operativa"

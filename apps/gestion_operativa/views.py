@@ -1,4 +1,4 @@
-from rest_framework import viewsets
+from rest_framework import serializers, viewsets
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.pagination import PageNumberPagination
 
@@ -18,11 +18,13 @@ from .models import (
     Pais,
     ProvinciaEstado,
     Ciudad,
+    Persona,
 )
 from .serializers import (
     DistribuidoraSerializer,
     DistribuidoraExpandedSerializer,
     CasaApuestasSerializer,
+    CasaApuestasCreateSerializer,
     UbicacionSerializer,
     AgenciaSerializer,
     PerfilOperativoSerializer,
@@ -36,6 +38,7 @@ from .serializers import (
     PaisSerializer,
     ProvinciaEstadoSerializer,
     CiudadSerializer,
+    PersonaSerializer,
 )
 
 
@@ -99,6 +102,25 @@ class CiudadViewSet(viewsets.ModelViewSet):
         return queryset
 
 
+class PersonaViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para Personas.
+    """
+
+    queryset = Persona.objects.all()
+    serializer_class = PersonaSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
+
+    def get_queryset(self):
+        """Permite filtrar por documento si es necesario"""
+        queryset = super().get_queryset()
+        doc = self.request.query_params.get("documento")
+        if doc:
+            queryset = queryset.filter(numero_documento__icontains=doc)
+        return queryset.order_by("primer_apellido")
+
+
 # ============================================================================
 # DISTRIBUIDORAS VIEWSET
 # ============================================================================
@@ -156,6 +178,12 @@ class CasaApuestasViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]  # Allow read without auth
     pagination_class = StandardPagination
 
+    def get_serializer_class(self):
+        """Usa serializer diferente para creación vs edición."""
+        if self.action == "create":
+            return CasaApuestasCreateSerializer
+        return CasaApuestasSerializer
+
     def get_queryset(self):
         """Filtra por distribuidora si se especifica."""
         queryset = super().get_queryset()
@@ -165,6 +193,24 @@ class CasaApuestasViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(distribuidora_id=distribuidora_id)
 
         return queryset.order_by("nombre")
+
+    def perform_create(self, serializer):
+        """Asigna distribuidora desde body o query; valida si falta en ambos."""
+        distribuidora_id_body = serializer.validated_data.get("distribuidora")
+        distribuidora_id_query = self.request.query_params.get("distribuidora")
+
+        # Prioridad: body > query param
+        if distribuidora_id_body:
+            serializer.save()
+            return
+
+        if distribuidora_id_query:
+            serializer.save(distribuidora_id=distribuidora_id_query)
+            return
+
+        raise serializers.ValidationError(
+            {"distribuidora": "Debe enviarse en el body o como query param ?distribuidora=ID."}
+        )
 
 
 # ============================================================================
