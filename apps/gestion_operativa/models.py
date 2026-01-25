@@ -564,6 +564,11 @@ class ObjetivoCreacionPerfiles(models.Model):
         default=False,
         help_text="Indica si el objetivo ya fue cumplido"
     )
+    planificacion = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Planificación de creación: {'YYYY-MM-DD': cantidad, ...}"
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 

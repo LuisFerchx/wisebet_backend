@@ -223,6 +223,7 @@ class ObjetivoCreacionPerfilesSerializer(serializers.ModelSerializer):
             "completado",
             "perfiles_restantes",
             "porcentaje_completado",
+            "planificacion",
             "fecha_creacion",
             "fecha_actualizacion",
         ]
@@ -234,6 +235,7 @@ class ObjetivoCreacionPerfilesSerializer(serializers.ModelSerializer):
             "fecha_actualizacion",
             "cantidad_completada",
             "completado",
+            "planificacion",
         ]
 
     def validate_cantidad_objetivo(self, value):

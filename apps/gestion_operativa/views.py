@@ -4,6 +4,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Sum
+from datetime import date, timedelta
+import pytz
 
 from .models import (
     Distribuidora,
@@ -457,6 +459,7 @@ class ObjetivoCreacionPerfilesViewSet(viewsets.ModelViewSet):
                     "agencia_id": objetivo.agencia.id_agencia,
                     "agencia_nombre": objetivo.agencia.nombre,
                     "fecha": objetivo.fecha_limite.isoformat(),
+                    "fecha_inicio": objetivo.fecha_inicio.isoformat(),
                     "cantidad_objetivo": objetivo.cantidad_objetivo,
                     "cantidad_completada": objetivo.cantidad_completada,
                     "perfiles_restantes": objetivo.perfiles_restantes,
@@ -489,7 +492,205 @@ class ObjetivoCreacionPerfilesViewSet(viewsets.ModelViewSet):
                         }
                     )
 
+            # Eventos de días planificados
+            if objetivo.planificacion:
+                tz = pytz.timezone("America/Guayaquil")
+                for fecha_str, cantidad in objetivo.planificacion.items():
+                    # Contar perfiles creados ese día específico (timezone Ecuador)
+                    fecha_plan = date.fromisoformat(fecha_str)
+                    
+                    # Convertir a rango de datetime con timezone
+                    from datetime import datetime, time
+                    inicio_dia = tz.localize(datetime.combine(fecha_plan, time.min))
+                    fin_dia = tz.localize(datetime.combine(fecha_plan, time.max))
+                    
+                    creados_ese_dia = PerfilOperativo.objects.filter(
+                        agencia=objetivo.agencia,
+                        fecha_creacion__gte=inicio_dia,
+                        fecha_creacion__lte=fin_dia,
+                    ).count()
+                    
+                    eventos.append(
+                        {
+                            "id": f"plan-{objetivo.id_objetivo}-{fecha_str}",
+                            "tipo": "planificado",
+                            "titulo": f"Crear {cantidad} perfiles",
+                            "agencia_id": objetivo.agencia.id_agencia,
+                            "agencia_nombre": objetivo.agencia.nombre,
+                            "fecha": fecha_str,
+                            "cantidad_planificada": cantidad,
+                            "cantidad_creada": creados_ese_dia,
+                            "objetivo_id": objetivo.id_objetivo,
+                        }
+                    )
+
         return Response(eventos)
+
+    @action(detail=True, methods=["patch"], url_path="planificar")
+    def planificar(self, request, pk=None):
+        """
+        PATCH /objetivos-perfiles/{id}/planificar/
+
+        Body: {"fecha": "2026-01-28", "cantidad": 2}
+
+        Guarda/actualiza la planificación de creación de perfiles para una fecha.
+        Si cantidad=0, elimina esa fecha del JSON.
+        """
+        objetivo = self.get_object()
+        fecha_str = request.data.get("fecha")
+        cantidad = request.data.get("cantidad")
+
+        # Validaciones básicas
+        if not fecha_str:
+            return Response(
+                {"error": "Se requiere el campo 'fecha'"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        if cantidad is None:
+            return Response(
+                {"error": "Se requiere el campo 'cantidad'"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            cantidad = int(cantidad)
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "La cantidad debe ser un número entero"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validar formato de fecha
+        try:
+            fecha = date.fromisoformat(fecha_str)
+        except ValueError:
+            return Response(
+                {"error": "Formato de fecha inválido. Use YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validar que la fecha esté dentro del rango del objetivo
+        if fecha < objetivo.fecha_inicio or fecha > objetivo.fecha_limite:
+            return Response(
+                {
+                    "error": f"La fecha debe estar entre {objetivo.fecha_inicio} y {objetivo.fecha_limite}"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Obtener planificación actual (copia)
+        planificacion = dict(objetivo.planificacion) if objetivo.planificacion else {}
+
+        # Calcular suma actual sin la fecha que estamos modificando
+        suma_actual = sum(
+            v for k, v in planificacion.items() if k != fecha_str
+        )
+
+        # Validar que la suma no supere cantidad_objetivo
+        if cantidad > 0 and (suma_actual + cantidad) > objetivo.cantidad_objetivo:
+            disponible = objetivo.cantidad_objetivo - suma_actual
+            return Response(
+                {
+                    "error": f"La suma de planificados ({suma_actual + cantidad}) supera el objetivo ({objetivo.cantidad_objetivo}). Disponible: {disponible}"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Actualizar planificación
+        if cantidad == 0:
+            # Eliminar fecha si cantidad es 0
+            planificacion.pop(fecha_str, None)
+        else:
+            planificacion[fecha_str] = cantidad
+
+        objetivo.planificacion = planificacion
+        objetivo.save(update_fields=["planificacion", "fecha_actualizacion"])
+
+        return Response(self.get_serializer(objetivo).data)
+
+    @action(detail=False, methods=["get"])
+    def alertas(self, request):
+        """
+        GET /objetivos-perfiles/alertas/
+
+        Retorna alertas de planificación:
+        - SIN_PLANIFICAR: objetivos que no tienen toda la cantidad planificada
+        - HOY: perfiles a crear hoy según planificación
+        - MAÑANA: perfiles a crear mañana según planificación
+        """
+        # Timezone America/Guayaquil
+        tz = pytz.timezone("America/Guayaquil")
+        from django.utils import timezone
+        hoy = timezone.now().astimezone(tz).date()
+        manana = hoy + timedelta(days=1)
+
+        alertas = []
+        objetivos = ObjetivoCreacionPerfiles.objects.select_related("agencia").filter(
+            completado=False
+        )
+
+        for objetivo in objetivos:
+            planificacion = objetivo.planificacion or {}
+            suma_planificada = sum(planificacion.values())
+
+            # Alerta SIN_PLANIFICAR
+            if suma_planificada < objetivo.cantidad_objetivo:
+                faltantes = objetivo.cantidad_objetivo - suma_planificada
+                alertas.append(
+                    {
+                        "tipo": "SIN_PLANIFICAR",
+                        "objetivo_id": objetivo.id_objetivo,
+                        "agencia_id": objetivo.agencia.id_agencia,
+                        "agencia_nombre": objetivo.agencia.nombre,
+                        "mensaje": f"{objetivo.agencia.nombre}: No has planificado los {faltantes} perfiles faltantes",
+                        "faltantes_por_planificar": faltantes,
+                    }
+                )
+
+            # Alerta HOY
+            hoy_str = hoy.isoformat()
+            if hoy_str in planificacion:
+                cantidad_hoy = planificacion[hoy_str]
+                # Contar perfiles creados hoy para esta agencia
+                creados_hoy = PerfilOperativo.objects.filter(
+                    agencia=objetivo.agencia,
+                    fecha_creacion__date=hoy,
+                ).count()
+
+                if creados_hoy < cantidad_hoy:
+                    pendientes = cantidad_hoy - creados_hoy
+                    alertas.append(
+                        {
+                            "tipo": "HOY",
+                            "objetivo_id": objetivo.id_objetivo,
+                            "agencia_id": objetivo.agencia.id_agencia,
+                            "agencia_nombre": objetivo.agencia.nombre,
+                            "mensaje": f"Hoy crear {pendientes} perfiles en {objetivo.agencia.nombre}",
+                            "fecha": hoy_str,
+                            "cantidad": cantidad_hoy,
+                            "creados_hoy": creados_hoy,
+                            "pendientes": pendientes,
+                        }
+                    )
+
+            # Alerta MAÑANA
+            manana_str = manana.isoformat()
+            if manana_str in planificacion:
+                cantidad_manana = planificacion[manana_str]
+                alertas.append(
+                    {
+                        "tipo": "MAÑANA",
+                        "objetivo_id": objetivo.id_objetivo,
+                        "agencia_id": objetivo.agencia.id_agencia,
+                        "agencia_nombre": objetivo.agencia.nombre,
+                        "mensaje": f"Mañana crear {cantidad_manana} perfiles en {objetivo.agencia.nombre}",
+                        "fecha": manana_str,
+                        "cantidad": cantidad_manana,
+                    }
+                )
+
+        return Response(alertas)
 
     @action(detail=False, methods=["get"], url_path="historial-por-agencia")
     def historial_por_agencia(self, request):
