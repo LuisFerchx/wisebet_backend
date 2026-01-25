@@ -609,6 +609,94 @@ class ObjetivoCreacionPerfilesViewSet(viewsets.ModelViewSet):
 
         return Response(self.get_serializer(objetivo).data)
 
+    @action(detail=True, methods=["patch"], url_path="mover-planificacion")
+    def mover_planificacion(self, request, pk=None):
+        """
+        PATCH /objetivos-perfiles/{id}/mover-planificacion/
+
+        Body: {"fecha_origen": "2026-01-25", "fecha_destino": "2026-01-28"}
+
+        Mueve la planificación de una fecha a otra (drag & drop en calendario).
+        Si fecha_destino ya tiene planificación, se SUMA la cantidad.
+        """
+        objetivo = self.get_object()
+        fecha_origen_str = request.data.get("fecha_origen")
+        fecha_destino_str = request.data.get("fecha_destino")
+
+        # Validaciones de campos requeridos
+        if not fecha_origen_str:
+            return Response(
+                {"detail": "Se requiere el campo 'fecha_origen'"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        if not fecha_destino_str:
+            return Response(
+                {"detail": "Se requiere el campo 'fecha_destino'"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validar formato de fechas
+        try:
+            fecha_origen = date.fromisoformat(fecha_origen_str)
+        except ValueError:
+            return Response(
+                {"detail": "Formato de fecha_origen inválido. Use YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            fecha_destino = date.fromisoformat(fecha_destino_str)
+        except ValueError:
+            return Response(
+                {"detail": "Formato de fecha_destino inválido. Use YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Obtener planificación actual
+        planificacion = dict(objetivo.planificacion) if objetivo.planificacion else {}
+
+        # Validación 1: fecha_origen debe existir en planificacion
+        if fecha_origen_str not in planificacion:
+            return Response(
+                {"detail": "No existe planificación para la fecha origen"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validación 2: fecha_destino debe estar entre fecha_inicio y fecha_limite
+        if fecha_destino < objetivo.fecha_inicio or fecha_destino > objetivo.fecha_limite:
+            return Response(
+                {"detail": "Fecha destino fuera del rango permitido"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validación 3: fecha_destino >= HOY (timezone Ecuador)
+        tz = pytz.timezone("America/Guayaquil")
+        from django.utils import timezone
+        hoy_ecuador = timezone.now().astimezone(tz).date()
+        
+        if fecha_destino < hoy_ecuador:
+            return Response(
+                {"detail": "No se puede mover a una fecha pasada"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Lógica de negocio: Mover planificación
+        # 1. Extraer cantidad de fecha_origen
+        cantidad = planificacion.pop(fecha_origen_str)
+
+        # 2. Si fecha_destino ya tiene planificación, SUMAR
+        if fecha_destino_str in planificacion:
+            planificacion[fecha_destino_str] += cantidad
+        else:
+            planificacion[fecha_destino_str] = cantidad
+
+        # 3. Guardar
+        objetivo.planificacion = planificacion
+        objetivo.save(update_fields=["planificacion", "fecha_actualizacion"])
+
+        return Response(self.get_serializer(objetivo).data)
+
     @action(detail=False, methods=["get"])
     def alertas(self, request):
         """
@@ -618,6 +706,10 @@ class ObjetivoCreacionPerfilesViewSet(viewsets.ModelViewSet):
         - SIN_PLANIFICAR: objetivos que no tienen toda la cantidad planificada
         - HOY: perfiles a crear hoy según planificación
         - MAÑANA: perfiles a crear mañana según planificación
+        - VENCIDO: objetivos cuya fecha_limite ya pasó
+        - FALTAN_3_DIAS: objetivo vence en 3 días
+        - FALTAN_2_DIAS: objetivo vence en 2 días
+        - FALTAN_1_DIA: objetivo vence mañana
         """
         # Timezone America/Guayaquil
         tz = pytz.timezone("America/Guayaquil")
@@ -687,6 +779,42 @@ class ObjetivoCreacionPerfilesViewSet(viewsets.ModelViewSet):
                         "mensaje": f"Mañana crear {cantidad_manana} perfiles en {objetivo.agencia.nombre}",
                         "fecha": manana_str,
                         "cantidad": cantidad_manana,
+                    }
+                )
+
+            # Alertas preventivas por días restantes hasta fecha_limite
+            dias_restantes = (objetivo.fecha_limite - hoy).days
+            perfiles_restantes = objetivo.perfiles_restantes
+
+            # Alerta VENCIDO (fecha_limite ya pasó)
+            if dias_restantes < 0 and perfiles_restantes > 0:
+                alertas.append(
+                    {
+                        "tipo": "VENCIDO",
+                        "objetivo_id": objetivo.id_objetivo,
+                        "agencia_id": objetivo.agencia.id_agencia,
+                        "agencia_nombre": objetivo.agencia.nombre,
+                        "mensaje": f"VENCIDO: {objetivo.agencia.nombre} tenía que completar {perfiles_restantes} perfiles",
+                        "fecha_limite": objetivo.fecha_limite.isoformat(),
+                        "dias_vencido": abs(dias_restantes),
+                        "perfiles_restantes": perfiles_restantes,
+                    }
+                )
+
+            # Alertas FALTAN_X_DIAS (3, 2, 1 días antes del vencimiento)
+            elif dias_restantes in [3, 2, 1] and perfiles_restantes > 0:
+                tipo_alerta = f"FALTAN_{dias_restantes}_DIAS" if dias_restantes > 1 else "FALTAN_1_DIA"
+                dia_texto = "días" if dias_restantes > 1 else "día"
+                alertas.append(
+                    {
+                        "tipo": tipo_alerta,
+                        "objetivo_id": objetivo.id_objetivo,
+                        "agencia_id": objetivo.agencia.id_agencia,
+                        "agencia_nombre": objetivo.agencia.nombre,
+                        "mensaje": f"Faltan {dias_restantes} {dia_texto} para completar {perfiles_restantes} perfiles en {objetivo.agencia.nombre}",
+                        "fecha_limite": objetivo.fecha_limite.isoformat(),
+                        "dias_restantes": dias_restantes,
+                        "perfiles_restantes": perfiles_restantes,
                     }
                 )
 
