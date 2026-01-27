@@ -200,7 +200,7 @@ class Persona(models.Model):
         upload_to="personas/documentos/", blank=True, null=True
     )
 
-    # Auditoría
+    
     fecha_registro = models.DateTimeField(auto_now_add=True)
     activo = models.BooleanField(default=True)
 
