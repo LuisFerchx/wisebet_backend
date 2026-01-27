@@ -62,9 +62,16 @@ class CiudadSerializer(serializers.ModelSerializer):
 
 
 class PersonaSerializer(serializers.ModelSerializer):
+
+    perfiles = serializers.PrimaryKeyRelatedField(
+        many=True,
+        read_only=True,
+    )
+
     class Meta:
         model = Persona
         fields = "__all__"
+        extra_fields = ["perfiles"]
 
 
 # ============================================================================
@@ -284,6 +291,11 @@ class PerfilOperativoSerializer(serializers.ModelSerializer):
     """Serializer para perfiles con campos calculados dinámicamente."""
 
     usuario_username = serializers.ReadOnlyField(source="usuario.username", allow_null=True)
+    usuario = serializers.PrimaryKeyRelatedField(
+        queryset=Persona.objects.all(),
+        required=False,
+        allow_null=True
+    )
     casa_nombre = serializers.SerializerMethodField()
     distribuidora_nombre = serializers.SerializerMethodField()
     agencia_nombre = serializers.ReadOnlyField(source="agencia.nombre")
