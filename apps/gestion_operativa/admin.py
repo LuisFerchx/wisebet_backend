@@ -105,13 +105,16 @@ class TransaccionFinancieraAdmin(admin.ModelAdmin):
     list_display = (
         "id_transaccion",
         "perfil",
-        "tipo_transaccion",
+        "tipo",
+        "metodo",
         "monto",
         "estado",
-        "fecha_transaccion",
+        "referencia",
+        "created_at",
+        "updated_at",
     )
-    list_filter = ("tipo_transaccion", "estado", "fecha_transaccion")
-    search_fields = ("perfil__nombre_usuario",)
+    list_filter = ("tipo", "metodo", "estado", "created_at")
+    search_fields = ("perfil__nombre_usuario", "referencia")
 
 
 @admin.register(PlanificacionRotacion)

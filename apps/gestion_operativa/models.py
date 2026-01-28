@@ -1,5 +1,7 @@
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
+from decimal import Decimal
 from django.utils import timezone
 from django.db.models import Sum
 from .choices import (
@@ -396,13 +398,27 @@ class TransaccionFinanciera(models.Model):
     perfil = models.ForeignKey(
         PerfilOperativo, on_delete=models.CASCADE, related_name="transacciones"
     )
-    tipo_transaccion = models.CharField(
-        max_length=50
-    )  # Consider adding choices for this too
-    monto = models.DecimalField(max_digits=12, decimal_places=2)
-    fecha_transaccion = models.DateTimeField()
-    metodo_pago = models.CharField(max_length=100)
-    estado = models.CharField(max_length=50)  # Consider adding choices for this
+    TIPO_CHOICES = [
+        ("DEPOSITO", "Depósito"),
+        ("RETIRO", "Retiro"),
+    ]
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    METODO_CHOICES = [
+        ("DEPOSITO", "Depósito"),
+        ("TARJETA", "Tarjeta"),
+        ("USDT", "USDT"),
+    ]
+    metodo = models.CharField(max_length=10, choices=METODO_CHOICES)
+    ESTADO_CHOICES = [
+        ("PENDIENTE", "Pendiente"),
+        ("COMPLETADO", "Completado"),
+        ("RECHAZADO", "Rechazado"),
+    ]
+    estado = models.CharField(max_length=12, choices=ESTADO_CHOICES)
+    monto = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    referencia = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "transacciones_financieras"

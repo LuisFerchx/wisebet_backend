@@ -394,6 +394,36 @@ class TransaccionFinancieraSerializer(serializers.ModelSerializer):
     class Meta:
         model = TransaccionFinanciera
         fields = "__all__"
+    usuario_nombre = serializers.CharField(source="perfil.nombre_usuario", read_only=True)
+    tipo_display = serializers.CharField(source="get_tipo_display", read_only=True)
+    metodo_display = serializers.CharField(source="get_metodo_display", read_only=True)
+    estado_display = serializers.CharField(source="get_estado_display", read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+
+    class Meta:
+        model = TransaccionFinanciera
+        fields = [
+            "id_transaccion",
+            "perfil",
+            "usuario_nombre",
+            "tipo",
+            "tipo_display",
+            "metodo",
+            "metodo_display",
+            "estado",
+            "estado_display",
+            "monto",
+            "referencia",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id_transaccion", "created_at", "updated_at", "usuario_nombre", "tipo_display", "metodo_display", "estado_display"]
+
+    def validate_monto(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("El monto debe ser mayor a 0.")
+        return value
 
 
 # ============================================================================
