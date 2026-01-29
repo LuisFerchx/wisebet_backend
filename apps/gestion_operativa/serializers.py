@@ -119,6 +119,7 @@ class CasaApuestasExpandedSerializer(serializers.ModelSerializer):
             "activo",
         ]
 
+
 class CasaApuestasCreateSerializer(serializers.ModelSerializer):
     """Serializer para creación de casas de apuestas (solo campos iniciales)."""
 
@@ -201,10 +202,9 @@ class AgenciaSerializer(serializers.ModelSerializer):
     def get_fields(self):
         """Filtra casas_madre para mostrar solo aquellas que pueden tener agencias."""
         fields = super().get_fields()
-        if 'casa_madre' in fields:
-            fields['casa_madre'].queryset = CasaApuestas.objects.filter(
-                puede_tener_agencia=True,
-                activo=True
+        if "casa_madre" in fields:
+            fields["casa_madre"].queryset = CasaApuestas.objects.filter(
+                puede_tener_agencia=True, activo=True
             )
         return fields
 
@@ -248,9 +248,7 @@ class ObjetivoCreacionPerfilesSerializer(serializers.ModelSerializer):
     def validate_cantidad_objetivo(self, value):
         """Valida que la cantidad objetivo sea válida."""
         if value <= 0:
-            raise serializers.ValidationError(
-                "La cantidad objetivo debe ser mayor a 0"
-            )
+            raise serializers.ValidationError("La cantidad objetivo debe ser mayor a 0")
         if value > 100:
             raise serializers.ValidationError(
                 "La cantidad objetivo no puede exceder 100 perfiles"
@@ -290,11 +288,11 @@ class OperacionSerializer(serializers.ModelSerializer):
 class PerfilOperativoSerializer(serializers.ModelSerializer):
     """Serializer para perfiles con campos calculados dinámicamente."""
 
-    usuario_username = serializers.ReadOnlyField(source="usuario.username", allow_null=True)
+    usuario_username = serializers.ReadOnlyField(
+        source="usuario.username", allow_null=True
+    )
     usuario = serializers.PrimaryKeyRelatedField(
-        queryset=Persona.objects.all(),
-        required=False,
-        allow_null=True
+        queryset=Persona.objects.all(), required=False, allow_null=True
     )
     casa_nombre = serializers.SerializerMethodField()
     distribuidora_nombre = serializers.SerializerMethodField()
@@ -312,7 +310,10 @@ class PerfilOperativoSerializer(serializers.ModelSerializer):
         model = PerfilOperativo
         fields = "__all__"
         extra_kwargs = {
-            "usuario": {"required": False, "allow_null": True},  # Se asigna dinámicamente después
+            "usuario": {
+                "required": False,
+                "allow_null": True,
+            },  # Se asigna dinámicamente después
         }
 
     def get_casa_nombre(self, obj):
@@ -366,7 +367,7 @@ class PerfilOperativoSerializer(serializers.ModelSerializer):
 
 class ConfiguracionOperativaSerializer(serializers.ModelSerializer):
     """Serializer para configuración operativa con campos calculados."""
-    
+
     capital_total_activos = serializers.SerializerMethodField()
 
     class Meta:
@@ -377,9 +378,12 @@ class ConfiguracionOperativaSerializer(serializers.ModelSerializer):
         """
         Calcula la suma de saldos de todos los perfiles ACTIVOS.
         """
-        total = PerfilOperativo.objects.filter(
-            activo=True
-        ).aggregate(total=Sum("saldo_actual"))["total"] or 0
+        total = (
+            PerfilOperativo.objects.filter(activo=True).aggregate(
+                total=Sum("saldo_actual")
+            )["total"]
+            or 0
+        )
         return float(total)
 
 
@@ -390,11 +394,9 @@ class ConfiguracionOperativaSerializer(serializers.ModelSerializer):
 
 class TransaccionFinancieraSerializer(serializers.ModelSerializer):
     perfil_usuario = serializers.ReadOnlyField(source="perfil.nombre_usuario")
-
-    class Meta:
-        model = TransaccionFinanciera
-        fields = "__all__"
-    usuario_nombre = serializers.CharField(source="perfil.nombre_usuario", read_only=True)
+    usuario_nombre = serializers.CharField(
+        source="perfil.nombre_usuario", read_only=True
+    )
     tipo_display = serializers.CharField(source="get_tipo_display", read_only=True)
     metodo_display = serializers.CharField(source="get_metodo_display", read_only=True)
     estado_display = serializers.CharField(source="get_estado_display", read_only=True)
@@ -406,6 +408,7 @@ class TransaccionFinancieraSerializer(serializers.ModelSerializer):
         fields = [
             "id_transaccion",
             "perfil",
+            "perfil_usuario",
             "usuario_nombre",
             "tipo",
             "tipo_display",
@@ -418,7 +421,16 @@ class TransaccionFinancieraSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id_transaccion", "created_at", "updated_at", "usuario_nombre", "tipo_display", "metodo_display", "estado_display"]
+        read_only_fields = [
+            "id_transaccion",
+            "created_at",
+            "updated_at",
+            "perfil_usuario",
+            "usuario_nombre",
+            "tipo_display",
+            "metodo_display",
+            "estado_display",
+        ]
 
     def validate_monto(self, value):
         if value <= 0:
