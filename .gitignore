@@ -66,3 +66,14 @@ coverage.xml
 # Migrations
 **/migrations/*
 !**/migrations/__init__.py
+
+# Docker
+ssl/
+certbot_www/
+*.sql
+backup_*.sql
+mediafiles/
+
+# Nginx temp
+nginx.temp.conf
+
